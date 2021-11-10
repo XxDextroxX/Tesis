@@ -17,7 +17,7 @@ class StreamListener(tweepy.Stream):
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
-                print(status.extended_tweet)
+                print(status._json)
                 # print(status.extended_tweet)
             except:
                 print("Avoiding retweet")
