@@ -68,5 +68,16 @@ class Labelled:
             valor_Similitud.append(float(a))
         return valor_Similitud
 
+    def EtiquetarModelLSI(self, tweet):
+        similaridad = self.modeloLSI(tweet)
+        k_5 = self.knn(similaridad, 5)
+        return k_5
+
+    def EtiquetaEnTexto(self, valor):
+        if valor[0] == 1:
+            return 'emergencia'
+        else:
+            return 'no_emergencia'
+
 
 a = Labelled()

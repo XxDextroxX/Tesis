@@ -59,21 +59,19 @@ class StreamListener(tweepy.Stream):
             try:
 
                 text = status._json["text"]
-                print(text)
-                # matches = 0
+                matches = 0
 
-                # for word in full_words:
-                #     if re.search(f"^{word}$", text, re.I):
-                #         matches += 1
+                for word in full_words:
+                    if re.search(f"{word}", text, re.I):
+                        matches += 1
 
-                # # Every single tweet should have at least 3 matches
-                # if matches < 3:
-                #     print(text, " has no match")
-                #     return
+                # Every single tweet should have at least 3 matches
+                if matches < 3:
+                    return
 
-                # self.save_raw_data(status._json)
-                # self.save_csv(status, self.path_csv)
-                # self.save_csv(status, self.path_tsv, True)
+                self.save_raw_data(status._json)
+                self.save_csv(status, self.path_csv)
+                self.save_csv(status, self.path_tsv, True)
             except Exception as e:
                 print(e)
 
