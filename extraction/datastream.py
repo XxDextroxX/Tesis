@@ -85,8 +85,8 @@ class StreamListener(tweepy.Stream):
                     long = (
                         status.place.bounding_box.coordinates[0][1][1]+status.place.bounding_box.coordinates[0][3][1]) / 2
                 else:
-                    lat = 'na'
-                    long = 'na'
+                    lat = '0'
+                    long = '0'
 
             text = json_data['extended_tweet']['full_text']if hasattr(
                 status, 'extended_tweet') else json_data['text']
