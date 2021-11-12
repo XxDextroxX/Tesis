@@ -1,27 +1,17 @@
 
 '''
 ------------install before start-------------
-pip install twitter
 pip install stanza
 pip install emoji
-pip install deap
 pip install nltk
-pip install numpy
 pip install pandas
 
 '''
 import stanza  # helps to lemmatize and tokenize words
 import nltk  # NLP tools
-import twitter  # twitter API support
 import datetime  # helps to format dates
-import pandas as pd  # data operations
 import re  # regular expression support
-import numpy as np  # linear algebra operations
-import torch
 import unicodedata
-import torch.functional as F
-import torch.nn.functional as F
-from torch.autograd import Variable
 from urllib.parse import unquote  # this: unquote('abc%20def') -> 'abc def'
 # Keep emoji sense but remove its unicode value => :( -> :sad:
 from emoji import demojize
@@ -32,11 +22,6 @@ from string import punctuation
 import tqdm  # It's to stream data in order to create progress bars
 # import tensorflow as tf
 # from tensorflow.keras import layers
-
-from deap import algorithms
-from deap import tools
-from deap import base
-from deap import creator
 
 import random
 
@@ -101,5 +86,5 @@ class Preprocessing:
         text = self.lemmatize_text(text)
         text = self.clean_text(text)
         text = self.remove_stopwords(text)
-        text = demojize(text, language='es')
+        # text = demojize(text, language='es')
         return text

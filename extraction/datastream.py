@@ -3,9 +3,32 @@ import tweepy
 import os
 import json
 import csv
+import re
+
+import pandas as pd
+
 from os.path import exists
 from extraction.preproccesing import Preprocessing
 
+
+
+# loading list of keywords
+list_1 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista1.csv')).values]
+list_2 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista2.csv')).values]
+list_3 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista3.csv')).values]
+list_4 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista4.csv')).values]
+list_5 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista5.csv')).values]
+list_6 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista6.csv')).values]
+list_7 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista7.csv')).values]
+list_8 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista8.csv')).values]
+list_9 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista9.csv')).values]
+list_10 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista10.csv')).values]
+list_11 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista11.csv')).values]
+list_12 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista12.csv')).values]
+list_13 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista13.csv')).values]
+list_14 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista14.csv')).values]
+
+full_words = list_1 + list_2 + list_3 + list_4 + list_5 + list_6 + list_7 + list_8 + list_9 + list_10 + list_11 + list_12 + list_13 + list_14
 
 class StreamListener(tweepy.Stream):
 
@@ -33,9 +56,23 @@ class StreamListener(tweepy.Stream):
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
-                self.save_raw_data(status._json)
-                self.save_csv(status, self.path_csv)
-                self.save_csv(status, self.path_tsv, True)
+
+                text = status._json["text"]
+                print(text)
+                # matches = 0
+
+                # for word in full_words:
+                #     if re.search(f"^{word}$", text, re.I):
+                #         matches += 1
+                
+                # # Every single tweet should have at least 3 matches
+                # if matches < 3:
+                #     print(text, " has no match")
+                #     return
+
+                # self.save_raw_data(status._json)
+                # self.save_csv(status, self.path_csv)
+                # self.save_csv(status, self.path_tsv, True)
             except Exception as e:
                 print(e)
 
@@ -46,7 +83,7 @@ class StreamListener(tweepy.Stream):
         if not exists(self.path):
             self.should_create_file = True
 
-        with open(self.path, "a+", encoding="utf-8") as f:
+        with open(self.path, "a+", encoding="utf-16") as f:
 
             # [f] is a reference
             self.delete_last_line(f)
@@ -69,9 +106,9 @@ class StreamListener(tweepy.Stream):
         long = None
         if not exists(path):
             self.should_create_file_csv = True
-        with open(path, "a+", encoding='utf-8') as f:
+        with open(path, "a+", encoding='utf-16') as f:
             if self.should_create_file_csv:
-                f.write("|".join(self.lista_name_fields))
+                f.write("|".join(self.lista_name_fields)+"\n")
                 f.flush()
                 self.should_create_file_csv = False
             if hasattr(status.coordinates, 'coordinates'):
@@ -85,8 +122,8 @@ class StreamListener(tweepy.Stream):
                     long = (
                         status.place.bounding_box.coordinates[0][1][1]+status.place.bounding_box.coordinates[0][3][1]) / 2
                 else:
-                    lat = 'na'
-                    long = 'na'
+                    lat = 0
+                    long = 0
 
             text = json_data['extended_tweet']['full_text']if hasattr(
                 status, 'extended_tweet') else json_data['text']
@@ -100,12 +137,12 @@ class StreamListener(tweepy.Stream):
                 json_data['user']['screen_name'],
                 text,
                 json_data['entities']['media']['url'] if hasattr(
-                    status.entities, 'media') else 'na',
+                    status.entities, 'media') else '',
                 str(lat),
                 str(long),
                 json_data['place']['full_name'] if hasattr(
-                    status.place, 'full_name') else 'na',
-                'no'
+                    status.place, 'full_name') else 'N/A',
+                'NO'
             ]
 
             data = json.dumps('|'.join(fields))
@@ -142,4 +179,5 @@ class StreamListener(tweepy.Stream):
         # status code 420 means Tweetir has blocked the API key due to api call limit
         # and if that happens then connection should be sutted off
         if status_code == 420:
+            print("Api call limit reached, waiting for reconnection. This is automatic.")
             return False
