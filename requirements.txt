@@ -1,0 +1,7 @@
+pandas
+stanza
+emoji
+nltk
+deap
+twisted
+gensim

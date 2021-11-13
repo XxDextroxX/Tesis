@@ -1,39 +1,18 @@
-from math import nan
 import tweepy
 import os
 import json
-import csv
 import re
-
-import pandas as pd
+import random
 
 from os.path import exists
 from extraction.preproccesing import Preprocessing
-
-
-# loading list of keywords
-list_1 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista1.csv')).values]
-list_2 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista2.csv')).values]
-list_3 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista3.csv')).values]
-list_4 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista4.csv')).values]
-list_5 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista5.csv')).values]
-list_6 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista6.csv')).values]
-list_7 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista7.csv')).values]
-list_8 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista8.csv')).values]
-list_9 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista9.csv')).values]
-list_10 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista10.csv')).values]
-list_11 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista11.csv')).values]
-list_12 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista12.csv')).values]
-list_13 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista13.csv')).values]
-list_14 = [str(x[0]) for x in (pd.read_csv('./Listas/Lista14.csv')).values]
-
-full_words = list_1 + list_2 + list_3 + list_4 + list_5 + list_6 + list_7 + \
-    list_8 + list_9 + list_10 + list_11 + list_12 + list_13 + list_14
+#----------------------------------------------------------------------------------------
 
 
 class StreamListener(tweepy.Stream):
 
-    def __init__(self):
+    def __init__(self, words):
+        self.word_list = words # All the emergency keywords
         self.preprocessor = Preprocessing()
         self.lista_name_fields = ['user_id_str', 'status_id', 'created_at', 'screen_name',
                                   'text', 'status_url', 'lat', 'long', 'place_full_name', 'revisado']
@@ -53,15 +32,45 @@ class StreamListener(tweepy.Stream):
             self.consumer_key, self.consumer_secret,
             self.access_token, self.access_token_secret
         )
+#----------------------------------------------------------------------------------------
+
+    # [period] needs to be in seconds
+    def extract_tweets(self, sample_size = 30):
+        # Since tweeter doesn't allow you to exceute too many conditions (every single
+        # word is a condition) it's necessary to just pick up a little sample from the
+        # whole population.
+        sample_words = random.sample(self.word_list, sample_size)
+
+        # feedback
+        print("Listening tweets with the next matches\n", sample_words)
+
+        # The online box constraint coordinates generatior can be found
+        # here:
+        # https://boundingbox.klokantech.com/
+
+        # This will filter tweets that match with the sample we just generated
+        self.filter(
+            languages = ["es"], # you can search in more than one language
+            track = sample_words,
+            filter_level = "low", # [none, low, medium] if you increase it then less tweets will be extracted
+            locations=[  # box constraints
+                -83.3443261945, -4.6485920843, -76.1730794131, 2.5029242769, # Ecuador, base
+                -93.452607978,-2.3069478112,-88.091279853,2.0425817528 # Ecuador, Galapagos
+            ],
+            threaded=True
+        )
+#----------------------------------------------------------------------------------------
 
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
-
                 text = status._json["text"]
                 matches = 0
 
-                for word in full_words:
+                # This is a second filter. For no reason Twitter is giving
+                # us tweets that don't match with keywords, so, just to be
+                # sure let's apply a second filter
+                for word in self.word_list:
                     if re.search(f"{word}", text, re.I):
                         matches += 1
 
@@ -69,11 +78,12 @@ class StreamListener(tweepy.Stream):
                 if matches < 3:
                     return
 
-                self.save_raw_data(status._json)
-                self.save_csv(status, self.path_csv)
-                self.save_csv(status, self.path_tsv, True)
+                self.save_raw_data(status._json) # This is the raw data coming from Tweeter servers
+                self.save_csv(status, self.path_csv) # CSV with relevant fields
+                self.save_csv(status, self.path_tsv, True) # CSV with text preprocessed
             except Exception as e:
                 print(e)
+#----------------------------------------------------------------------------------------
 
     # the [file] should be a reference
     def save_raw_data(self, json_data):
@@ -97,14 +107,16 @@ class StreamListener(tweepy.Stream):
             f.write(content)  # replacing the last line
             f.flush()  # ensure file will be full writed before being readed again
             f.close()  # closing the file
+#----------------------------------------------------------------------------------------
 
     def save_csv(self, status, path, shouldPreprocessing=False):
-
         json_data = status._json
         lat = None
         long = None
+
         if not exists(path):
             self.should_create_file_csv = True
+
         with open(path, "a+", encoding='utf-16') as f:
             if self.should_create_file_csv:
                 f.write("|".join(self.lista_name_fields)+"\n")
@@ -151,6 +163,7 @@ class StreamListener(tweepy.Stream):
 
             f.flush()
             f.close()
+#----------------------------------------------------------------------------------------
 
     def delete_last_line(self, file):
         # Move the pointer (similar to a cursor in a text editor) to the end of the file
@@ -173,10 +186,11 @@ class StreamListener(tweepy.Stream):
         if pos > 0:
             file.seek(pos, os.SEEK_SET)
             file.truncate()
+#----------------------------------------------------------------------------------------
 
     def on_error(self, status_code):
-        # status code 420 means Tweetir has blocked the API key due to api call limit
-        # and if that happens then connection should be sutted off
+        # status code 420 means Twitter has blocked the API key due to api call limit reached
+        # and if that happens then connection should be down for a while
         if status_code == 420:
             print("Api call limit reached, waiting for reconnection. This is automatic.")
             return False
