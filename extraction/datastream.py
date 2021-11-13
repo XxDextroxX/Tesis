@@ -3,7 +3,9 @@ import os
 import json
 import re
 import random
+import pandas as pd
 
+from model.knn import KNNModel
 from os.path import exists
 from extraction.preproccesing import Preprocessing
 #----------------------------------------------------------------------------------------
@@ -12,10 +14,14 @@ from extraction.preproccesing import Preprocessing
 class StreamListener(tweepy.Stream):
 
     def __init__(self, words):
+
+        self.knn_model = KNNModel()
+        self.encoding = 'utf-16'
+
         self.word_list = words # All the emergency keywords
         self.preprocessor = Preprocessing()
-        self.lista_name_fields = ['user_id_str', 'status_id', 'created_at', 'screen_name',
-                                  'text', 'status_url', 'lat', 'long', 'place_full_name', 'revisado']
+        self.lista_name_fields = ['user_id', 'status_id', 'created_at', 'screen_name',
+                                  'text', 'status_url', 'lat', 'long', 'place_full_name']
         self.path_csv = './data_streaming.csv'
         self.should_create_file_csv = False
         self.path_tsv = './data_streaming_preprocessing.csv'
@@ -54,16 +60,23 @@ class StreamListener(tweepy.Stream):
             track = sample_words,
             filter_level = "low", # [none, low, medium] if you increase it then less tweets will be extracted
             locations=[  # box constraints
-                -83.3443261945, -4.6485920843, -76.1730794131, 2.5029242769, # Ecuador, base
-                -93.452607978,-2.3069478112,-88.091279853,2.0425817528 # Ecuador, Galapagos
-            ],
-            threaded=True
+                -83.278924317,-6.0320552006,-74.5878673271,2.6512810757, # Ecuador, base
+            ]
         )
 #----------------------------------------------------------------------------------------
 
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
+
+                location = status.place.full_name if hasattr( \
+                    status.place, 'full_name') else (status.user.location \
+                    if hasattr(status.user, 'location') else "NA")
+
+                # avoiding other locations
+                if not re.search(f"Ecuador", str(location), re.I):
+                    return
+
                 text = status._json["text"]
                 matches = 0
 
@@ -80,7 +93,8 @@ class StreamListener(tweepy.Stream):
 
                 self.save_raw_data(status._json) # This is the raw data coming from Tweeter servers
                 self.save_csv(status, self.path_csv) # CSV with relevant fields
-                self.save_csv(status, self.path_tsv, True) # CSV with text preprocessed
+                fields = self.save_csv(status, self.path_tsv, shouldPreprocessing=True) # CSV with text preprocessed
+                self.save_labelled_csv(processed_fields=fields)
             except Exception as e:
                 print(e)
 #----------------------------------------------------------------------------------------
@@ -92,24 +106,90 @@ class StreamListener(tweepy.Stream):
         if not exists(self.path):
             self.should_create_file = True
 
-        with open(self.path, "a+", encoding="utf-16") as f:
+        f = open(self.path, "a+", encoding=self.encoding)
 
-            # [f] is a reference
-            self.delete_last_line(f)
+        # [f] is a reference
+        self.delete_last_line(f)
 
-            # What you wanna write
-            content = ('[\n' if self.should_create_file else ',') + \
-                f"{json.dumps(json_data)}\n]"
+        # What you wanna write
+        content = ('[\n' if self.should_create_file else ',') + \
+            f"{json.dumps(json_data)}\n]"
 
-            if self.should_create_file:
-                self.should_create_file = False
+        if self.should_create_file:
+            self.should_create_file = False
 
-            f.write(content)  # replacing the last line
-            f.flush()  # ensure file will be full writed before being readed again
-            f.close()  # closing the file
+        f.write(content)  # replacing the last line
+        f.flush()  # ensure file will be full writed before being readed again
+        f.close()  # closing the file
+#----------------------------------------------------------------------------------------
+    def save_labelled_csv(self, processed_fields, path='data_etiquetada.csv', path2="data_etiquetada2.csv"):
+        """
+        `processed_fields` should be a formatted string with "|" character as separator
+        """
+        # Headers of the CSV. All labelled data should contain the class and the institution
+        fields = self.lista_name_fields.copy() + ['class', 'institution']
+
+        text_index = 4 # Text position in the CSV
+        splitted_text = processed_fields.split('|')
+        label = self.knn_model.predict_label(splitted_text[text_index].split(' '))
+
+        should_create_file1 = False
+        should_create_file2 = False
+
+        if not exists(path):
+            should_create_file1 = True
+
+        f = open(path, "a+", encoding=self.encoding)
+        if should_create_file1:
+            f.write("|".join(fields)+"\n")
+            f.flush()
+            should_create_file1 = False
+
+        
+        splitted_text += [label, 'No indentificada']
+
+        temp_df = pd.DataFrame(columns = fields)
+        temp_df.loc[-1] = splitted_text
+        row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
+
+        f.write(row)
+        f.flush()
+        f.close()
+
+        if not exists(path2):
+            should_create_file2 = True
+
+        del fields[text_index]
+        del splitted_text[text_index]
+
+        f2 = open(path2, "a+", encoding=self.encoding)
+        if should_create_file2:
+            f2.write("|".join(fields)+"\n")
+            f2.flush()
+            should_create_file2 = False
+
+        
+        temp_df = pd.DataFrame(columns = fields)
+        temp_df.loc[-1] = splitted_text
+        row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
+
+        f2.write(row)
+        f2.flush()
+        f2.close()
 #----------------------------------------------------------------------------------------
 
-    def save_csv(self, status, path, shouldPreprocessing=False):
+    def save_csv(self, status, path, shouldPreprocessing=False)->list:
+        """
+        `status` is a raw json coming from Twitter.
+        `path` is where do you want to save the csv (this is the same for labelled data).
+        `shouldPreprocessing` should be True if you wanna save a preprocessed CSV file.
+        If `make_label` is True then a new CSV is generated with the label of
+        emergency in the dataset (`processed_text` cannot be None and shouldPreprocessing 
+        should be False).
+
+        This will return the last row writted in the CSV.
+        """
+
         json_data = status._json
         lat = None
         long = None
@@ -117,7 +197,7 @@ class StreamListener(tweepy.Stream):
         if not exists(path):
             self.should_create_file_csv = True
 
-        with open(path, "a+", encoding='utf-16') as f:
+        with open(path, "a+", encoding=self.encoding) as f:
             if self.should_create_file_csv:
                 f.write("|".join(self.lista_name_fields)+"\n")
                 f.flush()
@@ -142,27 +222,26 @@ class StreamListener(tweepy.Stream):
                 text = self.preprocessor.clean_data(text)
 
             fields = [
-                json_data['user']['id_str'],
-                json_data['id_str'],
-                json_data['created_at'],
-                json_data['user']['screen_name'],
-                text,
-                json_data['entities']['media']['url'] if hasattr(
-                    status.entities, 'media') else '',
-                str(lat),
-                str(long),
-                json_data['place']['full_name'] if hasattr(
-                    status.place, 'full_name') else 'N/A',
-                'NO'
+                f"{json_data['user']['id_str']}",
+                f"{json_data['id_str']}",
+                f"{json_data['created_at']}",
+                f"{json_data['user']['screen_name']}",
+                f"{text}",
+                f"{str('https://twitter.com/'+json_data['user']['screen_name']+'/status/'+status.id_str)}",
+                f"{str(lat)}",
+                f"{str(long)}",
+                f"{json_data['place']['full_name'] if hasattr(status.place, 'full_name') else (json_data['user']['location'] if hasattr(status.user, 'location') else 'NA')}"
             ]
 
-            data = json.dumps('|'.join(fields))
-            data = data[1:]
-            data = data[:-1]
-            f.write(data+'\n')
+            temp_df = pd.DataFrame(columns = self.lista_name_fields)
+            temp_df.loc[-1] = fields
+            row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
 
+            f.write(row)
             f.flush()
             f.close()
+
+            return '|'.join(fields)
 #----------------------------------------------------------------------------------------
 
     def delete_last_line(self, file):

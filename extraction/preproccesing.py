@@ -1,29 +1,11 @@
-
-'''
-------------install before start-------------
-pip install stanza
-pip install emoji
-pip install nltk
-pip install pandas
-
-'''
 import stanza  # helps to lemmatize and tokenize words
 import nltk  # NLP tools
-import datetime  # helps to format dates
 import re  # regular expression support
 import unicodedata
-from urllib.parse import unquote  # this: unquote('abc%20def') -> 'abc def'
-# Keep emoji sense but remove its unicode value => :( -> :sad:
-from emoji import demojize
+from emoji import demojize # Keep emoji sense but remove its unicode value => :( -> :sad:
 from nltk.corpus import stopwords
 from nltk import word_tokenize  # stanza can tokenize as well, but this lighter
 from string import punctuation
-
-import tqdm  # It's to stream data in order to create progress bars
-# import tensorflow as tf
-# from tensorflow.keras import layers
-
-import random
 
 class Preprocessing:
 

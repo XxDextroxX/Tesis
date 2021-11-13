@@ -4,6 +4,7 @@ from twisted.internet import task, reactor # an event loop library
 from extraction.datastream import StreamListener  # handle twitter's connection
 #----------------------------------------------------------------------------------------
 
+
 # NOTE: uncomment this if this is the first time you're gonna run it
 # from extraction.preproccesing import Preprocessing
 # Preprocessing.download()
@@ -20,18 +21,17 @@ for i in range(NUMBER_LISTS):
     full_words += [str(x[0]) for x in (pd.read_csv(f'./Listas/Lista{i + 1}.csv')).values]
 #----------------------------------------------------------------------------------------
 
-# This will handle all the errors coming from Tweeter such as
-# extraction limit reached or disconnections
-stream_listener = StreamListener(full_words)
 
-period = 120.0 # how often should the sample of words change
+PERIOD = 240.0 # how often should the sample of words change
 
 def event():
-    stream_listener.disconnect()
-    stream_listener.extract_tweets()
+    # This will handle all the errors coming from Tweeter such as
+    # extraction limit reached or disconnections
+    stream_listener = StreamListener(full_words) # If you do this, Python will free up memory
+    stream_listener.extract_tweets(sample_size=300)
 
 event_loop = task.LoopingCall(event)
-event_loop.start(period) # call every [period] seconds
+event_loop.start(PERIOD) # call every [period] seconds
 
-# All the extraction will run insed the event loop
+# All the extraction will run inside the event loop
 reactor.run()
