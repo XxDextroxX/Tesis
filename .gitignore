@@ -1,4 +1,5 @@
 tweets_streaming.json
+tweets_streaming_*.json
 **.csv
 
 extraction/__pycache__/

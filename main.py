@@ -1,4 +1,6 @@
 import pandas as pd  # managing CSV files
+
+from datetime import date
 from dotenv import load_dotenv
 from twisted.internet import task, reactor  # an event loop library
 from extraction.datastream import StreamListener  # handle twitter's connection
@@ -29,12 +31,14 @@ for i in range(NUMBER_LISTS):
 PERIOD = int(os.getenv("REFRESH_TIME"))
 SAMPLE_SIZE = int(os.getenv("WORD_SAMPLE_SIZE"))
 
-
 def event():
+
+    raw_path = f'./tweets_streaming_{str(date.today())}.json'
+
     # This will handle all the errors coming from Tweeter such as
     # extraction limit reached or disconnections
     # If you do this, Python will free up memory
-    stream_listener = StreamListener(full_words)
+    stream_listener = StreamListener(full_words, raw_data_path=raw_path)
     stream_listener.extract_tweets(sample_size=SAMPLE_SIZE)
 
 

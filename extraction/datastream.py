@@ -10,13 +10,13 @@ from os.path import exists
 from extraction.preproccesing import Preprocessing
 # ----------------------------------------------------------------------------------------
 
+# All the cities are in this csv
+cities = pd.read_csv('./Listas/ciudades.csv')
 
 class StreamListener(tweepy.Stream):
-
-    def __init__(self, words):
-        self.NUMBERS_MATCH = os.getenv("NUMBER_WORD_MATCH")
-        self.country = ['Guayaquil', 'Quito', 'Cuenca', 'Santo', 'Machala', 'Durán', 'Manta',
-                        'Portoviejo', 'Loja', 'Ambato', 'Esmeraldas', 'Quevedo', 'Riobamba', 'Milagro', 'Ibarra', 'Ecuador']
+    def __init__(self, words, raw_data_path):
+        self.NUMBERS_MATCH = int(os.getenv("NUMBER_WORD_MATCH"))
+        self.country = [str(x[0]) for x in cities.values]
         self.category = [f'Categoria_{i+1}'for i in range(8)]
         self.knn_model = KNNModel()
         self.encoding = 'utf-16'
@@ -29,7 +29,7 @@ class StreamListener(tweepy.Stream):
         self.should_create_file_csv = False
         self.path_tsv = './data_streaming_preprocessing.csv'
         self.should_create_file_tsv = False  # if the json file should be created or not
-        self.path = "./tweets_streaming.json"
+        self.path = raw_data_path
         self.should_create_file = False  # if the json file should be created or not
         self.consumer_key = os.getenv(
             "TWITTER_CONSUMER_KEY")  # twitter app key

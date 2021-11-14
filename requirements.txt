@@ -5,4 +5,4 @@ nltk
 deap
 twisted
 gensim
-dotenv
+python-dotenv
