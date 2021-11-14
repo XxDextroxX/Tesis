@@ -7,6 +7,7 @@
 1. TWITTER_ACCESS_TOKEN
 1. TWITTER_ACCESS_TOKEN_SECRET
 1. NUMBER_LISTS = Numero archivos CSV en la carpeta lista
+1. NUMBER_WORD_MATCH = Numero de palabras que deben hacer match para que se valide el tweet
 
 # Antes de empezar
 

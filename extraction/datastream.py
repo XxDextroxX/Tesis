@@ -14,6 +14,7 @@ from extraction.preproccesing import Preprocessing
 class StreamListener(tweepy.Stream):
 
     def __init__(self, words):
+        self.NUMBERS_MATCH = os.getenv("NUMBER_WORD_MATCH")
         self.country = ['Guayaquil', 'Quito', 'Cuenca', 'Santo', 'Machala', 'Durán', 'Manta',
                         'Portoviejo', 'Loja', 'Ambato', 'Esmeraldas', 'Quevedo', 'Riobamba', 'Milagro', 'Ibarra', 'Ecuador']
         self.category = [f'Categoria_{i+1}'for i in range(8)]
@@ -98,7 +99,7 @@ class StreamListener(tweepy.Stream):
                         matches += 1
 
                 # Every single tweet should have at least 3 matches
-                if matches < 3:
+                if matches < self.NUMBERS_MATCH:
                     return
 
                 # This is the raw data coming from Tweeter servers
