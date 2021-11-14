@@ -5,4 +5,6 @@ extraction/__pycache__/
 
 **/__pycache__/
 .env
-
+data_etiquetada.csv
+**/**.pickle
+**/**.model
