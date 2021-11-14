@@ -166,7 +166,7 @@ class StreamListener(tweepy.Stream):
 
         temp_df = pd.DataFrame(columns=fields)
         temp_df.loc[-1] = splitted_text
-        row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
+        row = temp_df.to_csv(sep="|").split("\n-1|")[1]
 
         f.write(row)
         f.flush()
@@ -186,7 +186,7 @@ class StreamListener(tweepy.Stream):
 
         temp_df = pd.DataFrame(columns=fields)
         temp_df.loc[-1] = splitted_text
-        row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
+        row = temp_df.to_csv(sep="|").split("\n-1|")[1]
 
         f2.write(row)
         f2.flush()
@@ -250,7 +250,7 @@ class StreamListener(tweepy.Stream):
 
             temp_df = pd.DataFrame(columns=self.lista_name_fields)
             temp_df.loc[-1] = fields
-            row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
+            row = temp_df.to_csv(sep="|").split("\n-1|")[1]
 
             f.write(row)
             f.flush()
