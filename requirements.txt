@@ -5,5 +5,5 @@ nltk
 deap
 twisted
 gensim
-tweepy
+tweepy==4.3.0
 python-dotenv
