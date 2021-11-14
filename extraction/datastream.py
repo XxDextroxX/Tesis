@@ -8,17 +8,19 @@ import pandas as pd
 from model.knn import KNNModel
 from os.path import exists
 from extraction.preproccesing import Preprocessing
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
 
 class StreamListener(tweepy.Stream):
 
     def __init__(self, words):
-
+        self.country = ['Guayaquil', 'Quito', 'Cuenca', 'Santo', 'Machala', 'Durán', 'Manta',
+                        'Portoviejo', 'Loja', 'Ambato', 'Esmeraldas', 'Quevedo', 'Riobamba', 'Milagro', 'Ibarra', 'Ecuador']
+        self.category = [f'Categoria_{i+1}'for i in range(8)]
         self.knn_model = KNNModel()
         self.encoding = 'utf-16'
 
-        self.word_list = words # All the emergency keywords
+        self.word_list = words  # All the emergency keywords
         self.preprocessor = Preprocessing()
         self.lista_name_fields = ['user_id', 'status_id', 'created_at', 'screen_name',
                                   'text', 'status_url', 'lat', 'long', 'place_full_name']
@@ -28,20 +30,22 @@ class StreamListener(tweepy.Stream):
         self.should_create_file_tsv = False  # if the json file should be created or not
         self.path = "./tweets_streaming.json"
         self.should_create_file = False  # if the json file should be created or not
-        self.consumer_key = "HRnrbF20nFjNBabu6W0d62dTa"  # twitter app key
-        # twitter app secret
-        self.consumer_secret = "1ZXn0mQbmw3AepGhMxTfSgybzB7KblHDWNjzEPe5iBZn1LVTf3"
-        self.access_token = "908144452723773440-MBkl0CRLu37lsz8ygCTkzp4dwZ6gxuY"  # twitter key
-        self.access_token_secret = "rZMpZ2QXCsfeoUfgKj7mtsZRJO1Bp1mLTjwuDVZafY9VY"  # twitter secret
+        self.consumer_key = os.getenv(
+            "TWITTER_CONSUMER_KEY")  # twitter app key
+        self.consumer_secret = os.getenv(
+            "TWITTER_CONSUMER_SECRET")  # twitter app secret
+        self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")  # twitter key
+        self.access_token_secret = os.getenv(
+            "TWITTER_ACCESS_TOKEN_SECRET")  # twitter secret
 
         super().__init__(
             self.consumer_key, self.consumer_secret,
             self.access_token, self.access_token_secret
         )
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
     # [period] needs to be in seconds
-    def extract_tweets(self, sample_size = 30):
+    def extract_tweets(self, sample_size=30):
         # Since tweeter doesn't allow you to exceute too many conditions (every single
         # word is a condition) it's necessary to just pick up a little sample from the
         # whole population.
@@ -56,25 +60,31 @@ class StreamListener(tweepy.Stream):
 
         # This will filter tweets that match with the sample we just generated
         self.filter(
-            languages = ["es"], # you can search in more than one language
-            track = sample_words,
-            filter_level = "low", # [none, low, medium] if you increase it then less tweets will be extracted
+            languages=["es"],  # you can search in more than one language
+            track=sample_words,
+            # [none, low, medium] if you increase it then less tweets will be extracted
+            filter_level="low",
             locations=[  # box constraints
-                -83.278924317,-6.0320552006,-74.5878673271,2.6512810757, # Ecuador, base
+                -83.278924317, -6.0320552006, -74.5878673271, 2.6512810757,  # Ecuador, base
             ]
         )
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
 
-                location = status.place.full_name if hasattr( \
-                    status.place, 'full_name') else (status.user.location \
-                    if hasattr(status.user, 'location') else "NA")
+                location = status.place.full_name if hasattr(
+                    status.place, 'full_name') else (status.user.location
+                                                     if hasattr(status.user, 'location') else "NA")
 
                 # avoiding other locations
-                if not re.search(f"Ecuador", str(location), re.I):
+                from_ecuador = False
+                for country in self.country:
+                    if re.search(f"{country}", str(location), re.I):
+                        from_ecuador = True
+                        break
+                if not from_ecuador:
                     return
 
                 text = status._json["text"]
@@ -91,13 +101,17 @@ class StreamListener(tweepy.Stream):
                 if matches < 3:
                     return
 
-                self.save_raw_data(status._json) # This is the raw data coming from Tweeter servers
-                self.save_csv(status, self.path_csv) # CSV with relevant fields
-                fields = self.save_csv(status, self.path_tsv, shouldPreprocessing=True) # CSV with text preprocessed
+                # This is the raw data coming from Tweeter servers
+                self.save_raw_data(status._json)
+                # CSV with relevant fields
+                self.save_csv(status, self.path_csv)
+                # CSV with text preprocessed
+                fields = self.save_csv(
+                    status, self.path_tsv, shouldPreprocessing=True)
                 self.save_labelled_csv(processed_fields=fields)
             except Exception as e:
                 print(e)
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
     # the [file] should be a reference
     def save_raw_data(self, json_data):
@@ -121,7 +135,8 @@ class StreamListener(tweepy.Stream):
         f.write(content)  # replacing the last line
         f.flush()  # ensure file will be full writed before being readed again
         f.close()  # closing the file
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
+
     def save_labelled_csv(self, processed_fields, path='data_etiquetada.csv', path2="data_etiquetada2.csv"):
         """
         `processed_fields` should be a formatted string with "|" character as separator
@@ -129,9 +144,10 @@ class StreamListener(tweepy.Stream):
         # Headers of the CSV. All labelled data should contain the class and the institution
         fields = self.lista_name_fields.copy() + ['class', 'institution']
 
-        text_index = 4 # Text position in the CSV
+        text_index = 4  # Text position in the CSV
         splitted_text = processed_fields.split('|')
-        label = self.knn_model.predict_label(splitted_text[text_index].split(' '))
+        label = self.knn_model.predict_label(
+            splitted_text[text_index].split(' '))
 
         should_create_file1 = False
         should_create_file2 = False
@@ -145,10 +161,9 @@ class StreamListener(tweepy.Stream):
             f.flush()
             should_create_file1 = False
 
-        
-        splitted_text += [label, 'No indentificada']
+        splitted_text += [label, random.sample(self.category, 1)[0]]
 
-        temp_df = pd.DataFrame(columns = fields)
+        temp_df = pd.DataFrame(columns=fields)
         temp_df.loc[-1] = splitted_text
         row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
 
@@ -168,17 +183,16 @@ class StreamListener(tweepy.Stream):
             f2.flush()
             should_create_file2 = False
 
-        
-        temp_df = pd.DataFrame(columns = fields)
+        temp_df = pd.DataFrame(columns=fields)
         temp_df.loc[-1] = splitted_text
         row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
 
         f2.write(row)
         f2.flush()
         f2.close()
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
-    def save_csv(self, status, path, shouldPreprocessing=False)->list:
+    def save_csv(self, status, path, shouldPreprocessing=False) -> list:
         """
         `status` is a raw json coming from Twitter.
         `path` is where do you want to save the csv (this is the same for labelled data).
@@ -233,7 +247,7 @@ class StreamListener(tweepy.Stream):
                 f"{json_data['place']['full_name'] if hasattr(status.place, 'full_name') else (json_data['user']['location'] if hasattr(status.user, 'location') else 'NA')}"
             ]
 
-            temp_df = pd.DataFrame(columns = self.lista_name_fields)
+            temp_df = pd.DataFrame(columns=self.lista_name_fields)
             temp_df.loc[-1] = fields
             row = temp_df.to_csv(sep="|").split("\r\n-1|")[1]
 
@@ -242,7 +256,7 @@ class StreamListener(tweepy.Stream):
             f.close()
 
             return '|'.join(fields)
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
     def delete_last_line(self, file):
         # Move the pointer (similar to a cursor in a text editor) to the end of the file
@@ -265,7 +279,7 @@ class StreamListener(tweepy.Stream):
         if pos > 0:
             file.seek(pos, os.SEEK_SET)
             file.truncate()
-#----------------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------------------
 
     def on_error(self, status_code):
         # status code 420 means Twitter has blocked the API key due to api call limit reached

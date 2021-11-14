@@ -4,4 +4,5 @@ tweets_streaming.json
 extraction/__pycache__/
 
 **/__pycache__/
+.env
 

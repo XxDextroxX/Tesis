@@ -5,3 +5,4 @@ nltk
 deap
 twisted
 gensim
+dotenv
