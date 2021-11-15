@@ -82,7 +82,7 @@ class StreamListener(tweepy.Stream):
                 # avoiding other locations
                 from_ecuador = False
                 for country in self.country:
-                    if re.search(f"{country}", str(location), re.I):
+                    if country.lower() in str(location).lower():
                         from_ecuador = True
                         break
                 if not from_ecuador:
@@ -138,7 +138,7 @@ class StreamListener(tweepy.Stream):
         f.close()  # closing the file
 # ----------------------------------------------------------------------------------------
 
-    def save_labelled_csv(self, processed_fields, path='data_etiquetada.csv', path2="data_etiquetada2.csv"):
+    def save_labelled_csv(self, processed_fields, path2='data_etiquetada.csv', path="data_etiquetada2.csv"):
         """
         `processed_fields` should be a formatted string with "|" character as separator
         """
@@ -218,7 +218,6 @@ class StreamListener(tweepy.Stream):
                 f.flush()
                 self.should_create_file_csv = False
             if hasattr(status.coordinates, 'coordinates'):
-
                 lat = status.coordinates.coordinates[0]
                 long = status.coordinates.coordinates[1]
             else:
