@@ -7,3 +7,4 @@ twisted
 gensim
 tweepy==4.3.0
 python-dotenv
+geopy

@@ -1,3 +1,4 @@
+import threading
 import tweepy
 import os
 import json
@@ -5,21 +6,27 @@ import re
 import random
 import pandas as pd
 
+from datetime import date
+from geopy.geocoders import Nominatim
 from model.knn import KNNModel
 from os.path import exists
 from extraction.preproccesing import Preprocessing
+
 # ----------------------------------------------------------------------------------------
 
 # All the cities are in this csv
 cities = pd.read_csv('./Listas/ciudades.csv')
 
+geolocator = Nominatim(user_agent="geoapiExercises")
+
 class StreamListener(tweepy.Stream):
-    def __init__(self, words, raw_data_path):
+    def __init__(self, words):
         self.NUMBERS_MATCH = int(os.getenv("NUMBER_WORD_MATCH"))
-        self.country = [str(x[0]) for x in cities.values]
+        self.cities = [str(x[0]) for x in cities.values]
         self.category = [f'Categoria_{i+1}'for i in range(8)]
         self.knn_model = KNNModel()
         self.encoding = 'utf-16'
+        self.daemon = True
 
         self.word_list = words  # All the emergency keywords
         self.preprocessor = Preprocessing()
@@ -29,7 +36,7 @@ class StreamListener(tweepy.Stream):
         self.should_create_file_csv = False
         self.path_tsv = './data_streaming_preprocessing.csv'
         self.should_create_file_tsv = False  # if the json file should be created or not
-        self.path = raw_data_path
+        self.path = f'./tweets_streaming_{str(date.today())}.json'
         self.should_create_file = False  # if the json file should be created or not
         self.consumer_key = os.getenv(
             "TWITTER_CONSUMER_KEY")  # twitter app key
@@ -46,7 +53,14 @@ class StreamListener(tweepy.Stream):
 # ----------------------------------------------------------------------------------------
 
     # [period] needs to be in seconds
-    def extract_tweets(self, sample_size=30):
+    def extract_tweets(self, sample_size=30, thread = None):
+
+        if thread is not None:
+            threading.Event().set()
+
+
+        self.path = f'./tweets_streaming_{str(date.today())}.json'
+
         # Since tweeter doesn't allow you to exceute too many conditions (every single
         # word is a condition) it's necessary to just pick up a little sample from the
         # whole population.
@@ -60,31 +74,39 @@ class StreamListener(tweepy.Stream):
         # https://boundingbox.klokantech.com/
 
         # This will filter tweets that match with the sample we just generated
-        self.filter(
+
+        return self.filter(
             languages=["es"],  # you can search in more than one language
             track=sample_words,
             # [none, low, medium] if you increase it then less tweets will be extracted
             filter_level="low",
             locations=[  # box constraints
                 -83.278924317, -6.0320552006, -74.5878673271, 2.6512810757,  # Ecuador, base
-            ]
+            ],
+            threaded=True
         )
 # ----------------------------------------------------------------------------------------
 
     def on_status(self, status):
         if not hasattr(status, "retweeted_status"):
             try:
-
                 location = status.place.full_name if hasattr(
                     status.place, 'full_name') else (status.user.location
                                                      if hasattr(status.user, 'location') else "NA")
+                
+                # not from Ecuador. If the location has a comma then it should
+                # always have the word "Ecuador"
+                if len(str(location).split(',')) > 1:
+                    if "ecuador" not in str(location).lower():
+                        return
 
                 # avoiding other locations
                 from_ecuador = False
-                for country in self.country:
-                    if country.lower() in str(location).lower():
+                for _citie in self.cities:
+                    if f"{_citie.lower()}," in str(location).lower():
                         from_ecuador = True
                         break
+
                 if not from_ecuador:
                     return
 
@@ -121,21 +143,20 @@ class StreamListener(tweepy.Stream):
         if not exists(self.path):
             self.should_create_file = True
 
-        f = open(self.path, "a+", encoding=self.encoding)
+        with open(self.path, "a+", encoding=self.encoding) as f:
+            # [f] is a reference
+            self.delete_last_line(f)
 
-        # [f] is a reference
-        self.delete_last_line(f)
+            # What you wanna write
+            content = ('[\n' if self.should_create_file else ',') + \
+                f"{json.dumps(json_data)}\n]"
 
-        # What you wanna write
-        content = ('[\n' if self.should_create_file else ',') + \
-            f"{json.dumps(json_data)}\n]"
+            if self.should_create_file:
+                self.should_create_file = False
 
-        if self.should_create_file:
-            self.should_create_file = False
-
-        f.write(content)  # replacing the last line
-        f.flush()  # ensure file will be full writed before being readed again
-        f.close()  # closing the file
+            f.write(content)  # replacing the last line
+            f.flush()  # ensure file will be full writed before being readed again
+            f.close()  # closing the file
 # ----------------------------------------------------------------------------------------
 
     def save_labelled_csv(self, processed_fields, path2='data_etiquetada.csv', path="data_etiquetada2.csv"):
@@ -212,50 +233,52 @@ class StreamListener(tweepy.Stream):
         if not exists(path):
             self.should_create_file_csv = True
 
-        with open(path, "a+", encoding=self.encoding) as f:
-            if self.should_create_file_csv:
-                f.write("|".join(self.lista_name_fields)+"\n")
-                f.flush()
-                self.should_create_file_csv = False
-            if hasattr(status.coordinates, 'coordinates'):
-                lat = status.coordinates.coordinates[0]
-                long = status.coordinates.coordinates[1]
-            else:
-                if hasattr(status.place, 'bounding_box'):
-                    lat = (
-                        status.place.bounding_box.coordinates[0][1][0]+status.place.bounding_box.coordinates[0][3][0]) / 2
-                    long = (
-                        status.place.bounding_box.coordinates[0][1][1]+status.place.bounding_box.coordinates[0][3][1]) / 2
-                else:
-                    lat = '0'
-                    long = '0'
-
-            text = json_data['extended_tweet']['full_text']if hasattr(
-                status, 'extended_tweet') else json_data['text']
-            if shouldPreprocessing:
-                text = self.preprocessor.clean_data(text)
-
-            fields = [
-                f"{json_data['user']['id_str']}",
-                f"{json_data['id_str']}",
-                f"{json_data['created_at']}",
-                f"{json_data['user']['screen_name']}",
-                f"{text}",
-                f"{str('https://twitter.com/'+json_data['user']['screen_name']+'/status/'+status.id_str)}",
-                f"{str(lat)}",
-                f"{str(long)}",
-                f"{json_data['place']['full_name'] if hasattr(status.place, 'full_name') else (json_data['user']['location'] if hasattr(status.user, 'location') else 'NA')}"
-            ]
-
-            temp_df = pd.DataFrame(columns=self.lista_name_fields)
-            temp_df.loc[-1] = fields
-            row = temp_df.to_csv(sep="|").split("\n-1|")[1]
-
-            f.write(row)
+        f = open(path, "a+", encoding=self.encoding)
+        if self.should_create_file_csv:
+            f.write("|".join(self.lista_name_fields)+"\n")
             f.flush()
-            f.close()
+            self.should_create_file_csv = False
 
-            return '|'.join(fields)
+        location_name = json_data['place']['full_name'] if hasattr(status.place, 'full_name') else (json_data['user']['location'] if hasattr(status.user, 'location') else 'NA')
+        location_coor = geolocator.geocode(location_name)
+
+        # if hasattr(status.coordinates, 'coordinates'):
+        #     lat = status.coordinates.coordinates[0]
+        #     long = status.coordinates.coordinates[1]
+        # else:
+        #     if hasattr(status.place, 'bounding_box'):
+        #         lat = status.place.bounding_box.coordinates[0][0][1]
+        #         long = status.place.bounding_box.coordinates[0][0][0]
+        #     else:
+        #         lat = '0'
+        #         long = '0'
+
+        text = json_data['extended_tweet']['full_text']if hasattr(
+            status, 'extended_tweet') else json_data['text']
+        if shouldPreprocessing:
+            text = self.preprocessor.clean_data(text)
+
+        fields = [
+            f"{json_data['user']['id_str']}",
+            f"{json_data['id_str']}",
+            f"{json_data['created_at']}",
+            f"{json_data['user']['screen_name']}",
+            f"{text}",
+            f"{str('https://twitter.com/'+json_data['user']['screen_name']+'/status/'+status.id_str)}",
+            f"{str(location_coor.latitude)}",
+            f"{str(location_coor.longitude)}",
+            f"{json_data['place']['full_name'] if hasattr(status.place, 'full_name') else (json_data['user']['location'] if hasattr(status.user, 'location') else 'NA')}"
+        ]
+
+        temp_df = pd.DataFrame(columns=self.lista_name_fields)
+        temp_df.loc[-1] = fields
+        row = temp_df.to_csv(sep="|").split("\n-1|")[1]
+
+        f.write(row)
+        f.flush()
+        f.close()
+
+        return '|'.join(fields)
 # ----------------------------------------------------------------------------------------
 
     def delete_last_line(self, file):
