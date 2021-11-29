@@ -28,18 +28,23 @@ for i in range(NUMBER_LISTS):
 
 
 # how often should the sample of words change
-PERIOD = int(os.getenv("REFRESH_TIME"))
+PERIOD = float(os.getenv("REFRESH_TIME"))
 SAMPLE_SIZE = int(os.getenv("WORD_SAMPLE_SIZE"))
 
+stream_listener = StreamListener(full_words)
+
+# Necessary to stop the filter thread
+loop_thread = None
+
 def event():
-
-    raw_path = f'./tweets_streaming_{str(date.today())}.json'
-
     # This will handle all the errors coming from Tweeter such as
     # extraction limit reached or disconnections
     # If you do this, Python will free up memory
-    stream_listener = StreamListener(full_words, raw_data_path=raw_path)
-    stream_listener.extract_tweets(sample_size=SAMPLE_SIZE)
+    global loop_thread
+
+    stream_listener.disconnect()
+    thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
+    loop_thread = thread
 
 
 event_loop = task.LoopingCall(event)
