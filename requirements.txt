@@ -6,5 +6,6 @@ deap
 twisted
 gensim
 tweepy==4.3.0
+torch==1.10.0
 python-dotenv
 geopy
