@@ -7,5 +7,6 @@ twisted
 gensim
 tweepy==4.3.0
 torch==1.10.0
+scikit-learn==1.0.2
 python-dotenv
 geopy
