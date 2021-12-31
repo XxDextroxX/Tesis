@@ -9,10 +9,13 @@ import torch.utils.data
 from torch.autograd import Variable
 
 class RBM():
-  def __init__(self, visible_nodes, hidden_nodes):
+  def __init__(self, visible_nodes, hidden_nodes, w: torch.tensor = None):
     # self.visible_nodes = visible_nodes
     # self.hidden_nodes = hidden_nodes
-    self.w = torch.randn(hidden_nodes, visible_nodes) # weigths matrix
+    self.w = torch.randn(hidden_nodes, visible_nodes)
+
+    # TODO: check if this is correct
+    self.w[:w.size()[0], :w.size()[1]] = w
 
     # biases
     # P(h|v)
@@ -103,3 +106,4 @@ class RBM():
           n_observation += 1.0
 
       print(f"Epochs: {epoch + 1}, loss: {training_loss / (n_observation if n_observation != 0 else 1)}")
+    return vk

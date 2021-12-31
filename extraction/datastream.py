@@ -89,55 +89,61 @@ class StreamListener(tweepy.Stream):
 # ----------------------------------------------------------------------------------------
 
     def on_status(self, status):
+        if self.id_tweet == status._json['id_str']:
+            # cleaning up the buffer
+            sys.stdout.flush()
+            return
+
+        self.id_tweet = status._json['id_str']
+        if not hasattr(status, "retweeted_status"):
+            try:
+                location = status.place.full_name if hasattr(
+                    status.place, 'full_name') else (status.user.location
+                                                        if hasattr(status.user, 'location') else "NA")
+
+                # not from Ecuador. If the location has a comma then it should
+                # always have the word "Ecuador"
+                if len(str(location).split(',')) > 1:
+                    if "ecuador" not in str(location).lower():
+                        return
+
+                # avoiding other locations
+                from_ecuador = False
+                for _citie in self.cities:
+                    if f"{_citie.lower()}," in str(location).lower():
+                        from_ecuador = True
+                        break
+
+                if not from_ecuador:
+                    return
+
+                text = status._json["text"]
+                matches = 0
+
+                # This is a second filter. For no reason Twitter is giving
+                # us tweets that don't match with keywords, so, just to be
+                # sure let's apply a second filter
+                for word in self.word_list:
+                    if re.search(f"{word}", text, re.I):
+                        matches += 1
+
+                # Every single tweet should have at least 3 matches
+                if matches < self.NUMBERS_MATCH:
+                    return
+
+                # This is the raw data coming from Tweeter servers
+                self.save_raw_data(status._json)
+                # CSV with relevant fields
+                self.save_csv(status, self.path_csv)
+                # CSV with text preprocessed
+                fields = self.save_csv(
+                    status, self.path_tsv, shouldPreprocessing=True)
+                self.save_labelled_csv(processed_fields=fields)
+            except Exception as e:
+                print(e)
+    
+        # cleaning up the buffer
         sys.stdout.flush()
-        if self.id_tweet != status._json['id_str']:
-            self.id_tweet = status._json['id_str']
-            if not hasattr(status, "retweeted_status"):
-                try:
-                    location = status.place.full_name if hasattr(
-                        status.place, 'full_name') else (status.user.location
-                                                         if hasattr(status.user, 'location') else "NA")
-
-                    # not from Ecuador. If the location has a comma then it should
-                    # always have the word "Ecuador"
-                    if len(str(location).split(',')) > 1:
-                        if "ecuador" not in str(location).lower():
-                            return
-
-                    # avoiding other locations
-                    from_ecuador = False
-                    for _citie in self.cities:
-                        if f"{_citie.lower()}," in str(location).lower():
-                            from_ecuador = True
-                            break
-
-                    if not from_ecuador:
-                        return
-
-                    text = status._json["text"]
-                    matches = 0
-
-                    # This is a second filter. For no reason Twitter is giving
-                    # us tweets that don't match with keywords, so, just to be
-                    # sure let's apply a second filter
-                    for word in self.word_list:
-                        if re.search(f"{word}", text, re.I):
-                            matches += 1
-
-                    # Every single tweet should have at least 3 matches
-                    if matches < self.NUMBERS_MATCH:
-                        return
-
-                    # This is the raw data coming from Tweeter servers
-                    self.save_raw_data(status._json)
-                    # CSV with relevant fields
-                    self.save_csv(status, self.path_csv)
-                    # CSV with text preprocessed
-                    fields = self.save_csv(
-                        status, self.path_tsv, shouldPreprocessing=True)
-                    self.save_labelled_csv(processed_fields=fields)
-                except Exception as e:
-                    print(e)
 
 
 # ----------------------------------------------------------------------------------------
@@ -181,10 +187,10 @@ class StreamListener(tweepy.Stream):
         should_create_file1 = False
         should_create_file2 = False
 
-        if not exists(path):
+        if not exists(f"{str(date.today())}_{path}"):
             should_create_file1 = True
 
-        f = open(path, "a+", encoding=self.encoding)
+        f = open(f"{str(date.today())}_{path}", "a+", encoding=self.encoding)
         if should_create_file1:
             f.write("|".join(fields)+"\n")
             f.flush()
