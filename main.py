@@ -38,25 +38,26 @@ SAMPLE_SIZE = int(os.getenv("WORD_SAMPLE_SIZE"))
 # Necessary to stop the filter thread
 loop_thread = None
 
-def event():
-    # This will handle all the errors coming from Tweeter such as
-    # extraction limit reached or disconnections
-    # If you do this, Python will free up memory
-    # global loop_thread
+recommender_engine.run.train_rbm_model()
+# def event():
+#     # This will handle all the errors coming from Tweeter such as
+#     # extraction limit reached or disconnections
+#     # If you do this, Python will free up memory
+#     # global loop_thread
 
-    # stream_listener.disconnect()
-    # thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
-    # loop_thread = thread
+#     # stream_listener.disconnect()
+#     # thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
+#     # loop_thread = thread
 
-    # Training RBM with new data
-    recommender_engine.run.train_rbm_model()
+#     # Training RBM with new data
+#     recommender_engine.run.train_rbm_model()
 
 
 
-event_loop = task.LoopingCall(event)
-event_loop.start(PERIOD)  # call every [period] seconds
+# event_loop = task.LoopingCall(event)
+# event_loop.start(PERIOD)  # call every [period] seconds
 
-# All the extraction will run inside the event loop
-reactor.run()
+# # All the extraction will run inside the event loop
+# reactor.run()
 
 

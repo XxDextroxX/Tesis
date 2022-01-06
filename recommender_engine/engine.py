@@ -101,6 +101,7 @@ class RBM():
     '''
     for epoch in range(1, epochs):
       mae_loss = 0
+      mse_loss = 0
       s = 0.0 # count of non null records evaluated (used for metrics)
       for time_dim in range(12 * 31 * 24):
         # You need to user a matrix instead of a one-dimentional tensor, that's
@@ -120,18 +121,22 @@ class RBM():
         
                 
         mae_loss_value = torch.mean(torch.abs(v0[v0 >= 0] - vk[v0 >= 0]))
+        mse_loss_value = torch.pow(mae_loss_value, 2)
 
         try:
           if torch.tensor(mae_loss_value.size(dim=0)).item() > 0:
             mae_loss += mae_loss_value
+            mse_loss += mse_loss_value
             s += 1.0
         except:
           if torch.tensor(mae_loss_value.size()).item() > 0:
             mae_loss += mae_loss_value
+            mse_loss += mse_loss_value
             s += 1.0
 
       print("Epoch: "+str(epoch)+"")
       print(f"\t, Mean Absolute Error: "+str(mae_loss / s))
+      print(f"\t, Mean Square Error: "+str(mse_loss / s))
 
     self.vk = vk
     return vk
