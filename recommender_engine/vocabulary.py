@@ -1,4 +1,5 @@
 import pandas as pd
+import glob
 
 class VocabularyHelper:
     '''
@@ -10,7 +11,18 @@ class VocabularyHelper:
         self.initial_vocab = initial_vocab
         self.__vocab = {}
         self.__inv_vocab = {}
-        self.dataset = pd.read_csv('data_streaming_preprocessing.csv', sep='|', encoding='utf-16')
+
+        # All the files with this ocurrency will be loaded, so, be careful with names
+        path_pattern = "*data_etiquetada2.csv"
+
+        # store all the csv readed
+        csv_datasets = [
+            pd.read_csv(path,  sep='|', encoding='utf-16') \
+                for path in glob.glob(path_pattern)
+        ]
+
+        # The set of all the datasets of data
+        self.dataset = pd.concat(csv_datasets, axis=0, ignore_index=True)
 
     def get_vocab(self) -> list:
         '''

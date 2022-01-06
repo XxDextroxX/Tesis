@@ -33,7 +33,7 @@ for i in range(NUMBER_LISTS):
 PERIOD = float(os.getenv("REFRESH_TIME"))
 SAMPLE_SIZE = int(os.getenv("WORD_SAMPLE_SIZE"))
 
-stream_listener = StreamListener(full_words)
+# stream_listener = StreamListener(full_words)
 
 # Necessary to stop the filter thread
 loop_thread = None
@@ -42,11 +42,11 @@ def event():
     # This will handle all the errors coming from Tweeter such as
     # extraction limit reached or disconnections
     # If you do this, Python will free up memory
-    global loop_thread
+    # global loop_thread
 
-    stream_listener.disconnect()
-    thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
-    loop_thread = thread
+    # stream_listener.disconnect()
+    # thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
+    # loop_thread = thread
 
     # Training RBM with new data
     recommender_engine.run.train_rbm_model()
