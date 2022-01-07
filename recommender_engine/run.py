@@ -1,5 +1,8 @@
-import pandas as pd
+import json
 import os
+import torch
+import numpy as np
+import pandas as pd
 
 from recommender_engine.engine import RBM
 from recommender_engine.vocabulary import VocabularyHelper
@@ -7,16 +10,44 @@ from recommender_engine.dataset import DatasetHelper
 
 def train_rbm_model():
     print("Starting the training of RBM | initializing 0%")
-    vocabulary_helper = VocabularyHelper()
+
+    stored_vocab = {}
+    stored_inv_vocab = {}
+
+    # If there is a stored vocabulary I will use it since it's more efficient
+    if os.path.exists('./data/recommender/vocabulary.json'):
+        print("Stored vocabulary found, using it.")
+        f = open('./data/recommender/vocabulary.json')
+        stored_vocab = json.load(f)
+
+        if os.path.exists('./data/recommender/inverse_vocabulary.json'):
+            f = open('./data/recommender/inverse_vocabulary.json')
+            stored_inv_vocab = json.load(f)
+        else:
+            print("Inverse vocabulary not found. Deleting loaded vocabulary...")
+            stored_vocab = None
+
+    vocabulary_helper = VocabularyHelper(stored_vocab, stored_inv_vocab)
 
     ### Vocabulary generetion
     print("Starting the training of RBM | processing vocab 5%")
+    # If you are using a stored vocab then its indices are not gonna be lost
     vocabulary_helper.build_vocab()
+    vocabulary_helper.save_vocab()
     vocab, inv_vocab = vocabulary_helper.get_vocab()
 
     print("Starting the training of RBM | building dataset 10%")
     dataset_helper = DatasetHelper(vocab)
-    torch_data = dataset_helper.build_dataset(from_skratch = True, write_data=True)
+
+    # If [from_skratch] is False then I'll be using soted values
+    stored_data = torch.from_numpy(np.load('data/recommender/dimensional_data.npy')) \
+        if os.path.exists('./data/recommender/dimensional_data.npy') else None
+        
+    torch_data = dataset_helper.build_dataset(
+        from_skratch = True, # TODO: change it for production 
+        save_data=True, 
+        stored_data=stored_data
+    )
 
     nv = len(vocab) # visible nodes
     nh = 100 # hidden nodes. Not related with any data field
@@ -24,17 +55,18 @@ def train_rbm_model():
     print("Starting the training of RBM | training 30%")
 
     # Searching for stored weights
-    weights = pd.read_pickle("./weights.pkl") if os.path.exists('./weights.pkl') else None
+    weights = pd.read_pickle("./data/recommender/weights.pkl") \
+        if os.path.exists('./data/recommender/weights.pkl') else None
 
     if weights is None:
         print("No weights found. Training the model from skratch")
     else:
-        print("Stored weights found. Using stored weights.")
+        print("Stored weights found, using them")
 
     rbm = RBM(nv, nh, w = weights)
 
     # saving the new weights
-    pd.to_pickle(rbm.w, "./weights.pkl")
+    pd.to_pickle(rbm.w, "./data/recommender/weights.pkl")
 
     # fitting the machine
     rbm.fit(100, torch_data)

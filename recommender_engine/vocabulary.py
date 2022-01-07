@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import glob
 
@@ -7,13 +8,18 @@ class VocabularyHelper:
     in order to get a vocabulary. You can use an [initial_vocab] if you already
     has one, if you don't then a new one based on tweets will be created.
     '''
-    def __init__(self, initial_vocab: set = None):
-        self.initial_vocab = initial_vocab
-        self.__vocab = {}
-        self.__inv_vocab = {}
+    def __init__(self, stored_vocab = {}, stored_inv_vocab = {}):
+        '''
+        Here [stored_vocab] and [stored_inv_vocab] are previous stored
+        vocabularies (using save_vocabulary() method), so you can keep 
+        every word index
+        '''
+        self.initial_vocab = None
+        self.__vocab: dict = stored_vocab
+        self.__inv_vocab = stored_inv_vocab
 
         # All the files with this ocurrency will be loaded, so, be careful with names
-        path_pattern = "*data_etiquetada2.csv"
+        path_pattern = "./data/tweets_csv/*data_etiquetada2.csv"
 
         # store all the csv readed
         csv_datasets = [
@@ -23,6 +29,17 @@ class VocabularyHelper:
 
         # The set of all the datasets of data
         self.dataset = pd.concat(csv_datasets, axis=0, ignore_index=True)
+
+
+    def save_vocab(self):
+        '''
+        Saves two CSV, one for each vocabulary version (normal and inverted)
+        '''
+        with open('./data/recommender/vocabulary.json', 'w') as f:
+            json.dump(self.__vocab, f)
+
+        with open('./data/recommender/inverse_vocabulary.json', 'w') as f:
+            json.dump(self.__inv_vocab, f)
 
     def get_vocab(self) -> list:
         '''
@@ -50,6 +67,11 @@ class VocabularyHelper:
                 self.initial_vocab |= set(words)
 
         # generating vocab based on an index
-        for idx, word in enumerate(self.initial_vocab):
-            self.__vocab[word] = idx
-            self.__inv_vocab[idx] = word
+        index = len(self.__vocab)
+        for _, word in enumerate(self.initial_vocab - set(self.__vocab.keys())):
+            # continues the indices of the stored vocabulary
+            self.__vocab[word] = index
+            self.__inv_vocab[index] = word
+            index += 1
+
+        print(f"A vocabulary with {len(self.__vocab)} words has been built")

@@ -34,11 +34,11 @@ class StreamListener(tweepy.Stream):
         self.preprocessor = Preprocessing()
         self.lista_name_fields = ['user_id', 'status_id', 'created_at', 'screen_name',
                                   'text', 'status_url', 'lat', 'long', 'place_full_name']
-        self.path_csv = './data_streaming.csv'
+        self.path_csv = './data/tweets_csv/data_streaming.csv'
         self.should_create_file_csv = False
-        self.path_tsv = './data_streaming_preprocessing.csv'
+        self.path_tsv = './data/tweets_csv/data_streaming_preprocessing.csv'
         self.should_create_file_tsv = False  # if the json file should be created or not
-        self.path = f'./tweets_streaming_{str(date.today())}.json'
+        self.path = f'./data/tweets_json/tweets_streaming_{str(date.today())}.json'
         self.should_create_file = False  # if the json file should be created or not
         self.consumer_key = os.getenv(
             "TWITTER_CONSUMER_KEY")  # twitter app key
@@ -60,7 +60,7 @@ class StreamListener(tweepy.Stream):
         if thread is not None:
             threading.Event().set()
 
-        self.path = f'./tweets_streaming_{str(date.today())}.json'
+        self.path = f'./data/tweets_csv/tweets_streaming_{str(date.today())}.json'
 
         # Since tweeter doesn't allow you to exceute too many conditions (every single
         # word is a condition) it's necessary to just pick up a little sample from the
@@ -187,10 +187,10 @@ class StreamListener(tweepy.Stream):
         should_create_file1 = False
         should_create_file2 = False
 
-        if not exists(f"{str(date.today())}_{path}"):
+        if not exists(f"./data/tweets_csv/{str(date.today())}_{path}"):
             should_create_file1 = True
 
-        f = open(f"{str(date.today())}_{path}", "a+", encoding=self.encoding)
+        f = open(f"./data/tweets_csv/{str(date.today())}_{path}", "a+", encoding=self.encoding)
         if should_create_file1:
             f.write("|".join(fields)+"\n")
             f.flush()

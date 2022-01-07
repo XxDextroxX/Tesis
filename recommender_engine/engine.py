@@ -17,7 +17,8 @@ class RBM():
     self.vk = None # visible nodes after K iterations (you need to train the model first)
 
     # TODO: check if this is correct
-    self.w[:w.size()[0], :w.size()[1]] = w
+    if w is not None:
+      self.w[:w.size()[0], :w.size()[1]] = w
 
     # biases
     # P(h|v)
@@ -99,44 +100,42 @@ class RBM():
     artificial deep neural network have?", so it depends on how much abstraction do you 
     want in your model, looking for a balance between performance and accuracy
     '''
-    for epoch in range(1, epochs):
-      mae_loss = 0
-      mse_loss = 0
-      s = 0.0 # count of non null records evaluated (used for metrics)
-      for time_dim in range(12 * 31 * 24):
-        # You need to user a matrix instead of a one-dimentional tensor, that's
-        # why here I am reshaping the values of [vk] and [v0]
-        vk = data[time_dim].reshape([1, torch.tensor(data[time_dim].size()).item()])
-        v0 = data[time_dim].reshape([1, torch.tensor(data[time_dim].size()).item()])
+    rows = 12 * 31 * 24
 
-        ph0,_ = self.sample_h(v0)
+    for epoch in range(epochs):
+        training_loss = 0
+        mse_loss = 0
+        s = 0.
+        for time_dim in range(rows):
+            vk = data[time_dim].reshape([1, torch.tensor(data[time_dim].size()).item()])
+            v0 = data[time_dim].reshape([1, torch.tensor(data[time_dim].size()).item()])
+            ph0,_ = self.sample_h(v0)
+            for k in range(1):
+                _,hk = self.sample_h(vk)
+                _,vk = self.sample_v(hk)
+                vk[v0 < 0] = v0[v0 < 0]
+            phk,_ = self.sample_h(vk)
+            self.train(v0, vk, ph0, phk)
+            loss = torch.mean(torch.abs(v0[v0>=0] - vk[v0>=0]))
 
-        # This is just then number of iterations in the same [time_dim]
-        for k in range(10):
-            _,hk = self.sample_h(vk)
-            _,vk = self.sample_v(hk)
-            vk[v0 < 0] = v0[v0 < 0]
-        phk,_ = self.sample_h(vk)
-        self.train(v0, vk, ph0, phk)
-        
-                
-        mae_loss_value = torch.mean(torch.abs(v0[v0 >= 0] - vk[v0 >= 0]))
-        mse_loss_value = torch.pow(mae_loss_value, 2)
+            if loss.isnan():
+              continue
 
-        try:
-          if torch.tensor(mae_loss_value.size(dim=0)).item() > 0:
-            mae_loss += mae_loss_value
-            mse_loss += mse_loss_value
-            s += 1.0
-        except:
-          if torch.tensor(mae_loss_value.size()).item() > 0:
-            mae_loss += mae_loss_value
-            mse_loss += mse_loss_value
-            s += 1.0
+            training_loss += loss
+            mse_loss += torch.pow(training_loss, 2)
 
-      print("Epoch: "+str(epoch)+"")
-      print(f"\t, Mean Absolute Error: "+str(mae_loss / s))
-      print(f"\t, Mean Square Error: "+str(mse_loss / s))
+            s += 1.
+            print(f"Training epoch {epoch} [", end="", flush=True)
+
+            for i in range(49):
+              if(int((time_dim / rows * 100) / 2) > i):
+                print("=", end="", flush=True)
+              else:
+                print("-", end="", flush=True)
+
+            print(f"]", end="\r", flush=True)
+        print("\nLoss (MAE): "+str(training_loss/s))
+        print("Loss (MSE): "+str(mse_loss/s))
 
     self.vk = vk
     return vk

@@ -1,3 +1,4 @@
+from datetime import date
 from numpy.core.fromnumeric import std
 
 import pandas as pd
@@ -34,23 +35,32 @@ class DatasetHelper:
             'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
         }
 
-    def build_dataset(self, from_skratch = False, write_data = False) -> torch.FloatTensor:
+    def build_dataset(self, from_skratch = False, save_data = False, stored_data = None) -> torch.FloatTensor:
         '''
         Builds the final dataset and if @write_date is True then it will write a file
         called 'flat_data.csv', another called 'vocabulary.json', and another one called 
-        'dimensional_data.npy' in this file level folder
+        'dimensional_data.npy' in this file level folder. [stored_data] is the npy file
+        of the multidimensional dataset if any is present.
         '''
-        raw_dataframe = self.read_dataset(all_datasets=from_skratch)
+        raw_dataframe = None
+        try:
+            raw_dataframe = self.read_dataset(all_datasets=from_skratch)
+        except:
+            print("Today dataset not found. Change it to [from_skratch=True] or not new data will be loaded.")
 
-        if from_skratch:
-            self.multi_data = self.__build_multidimensional_dataset(raw_dataframe)
-        
+        #TODO: from skratch            
+
+        if raw_dataframe is None:
+            self.multi_data = stored_data
+        else:
+            self.multi_data = self.__build_multidimensional_dataset(raw_dataframe, stored_data)        
         self.flat_data = self.__build_flat_dataset(self.multi_data)
 
-        if write_data:
-            np.save('./dimensional_data.npy', self.multi_data.numpy())
-            np.savetxt('./flat_data.csv', self.flat_data.numpy())
-
+        if save_data:
+            np.save('./data/recommender/dimensional_data.npy', self.multi_data.numpy())
+            np.savetxt('./data/recommender/flat_data.csv', self.flat_data.numpy())
+        
+        print(self.flat_data[self.flat_data > 0].size())
         return self.flat_data
 
     def __build_flat_dataset(self, data: torch.FloatTensor) -> torch.FloatTensor:
@@ -67,7 +77,7 @@ class DatasetHelper:
 
         return discretized_res
 
-    def __build_multidimensional_dataset(self, data: pd.DataFrame) -> torch.FloatTensor:
+    def __build_multidimensional_dataset(self, data: pd.DataFrame, stored_data:torch.Tensor) -> torch.FloatTensor:
         '''
         Builds a multidimensional dataset based on a flat pandas dataframe, where rows are
         gonna be time component, columns are words (from vocabulary) and slides are the class
@@ -76,12 +86,17 @@ class DatasetHelper:
         time_length = 12 * 31 * 24 # 12 months, 31 days, 24 hours
         word_length = len(self.vocab) # number of words in vocabulary
         classes = 2 # emergency | nonemergency
-        
+    
         # the data itself
         tensor = torch.tensor((), dtype=torch.float32)
         dataset = tensor.new_zeros((time_length, word_length, classes))
+        
+        if stored_data is not None:
+            # TODO: check if this is correct
+            dataset[:stored_data.size(dim=0), :stored_data.size(dim=1), :stored_data.size(dim=2)] = stored_data
 
-        # UPDATE THIS IF YOU CHANGE THE DATASET
+        print(f"Dimensional dataset has the size of {dataset.size()}")
+        # WARNING: UPDATE THIS IF YOU CHANGE THE DATASET
         dataset_indices = {
             'created_at': 2,
             'class': -2,
@@ -167,8 +182,7 @@ class DatasetHelper:
         Reads all the generated datasets accross time and then returns it as one single
         pandas dataframe
         '''
-        # The set of all the datasets of data
-        dataset = pd.read_csv('data_etiquetada2.csv', sep='|', encoding='utf-16')
+        dataset = pd.read_csv(f'./data/tweets_csv/{str(date.today())}_data_etiquetada2.csv', sep='|', encoding='utf-16')
 
         # console feedback
         print(f"Loaded a dataset with [{dataset.values.shape}] records")
@@ -181,7 +195,7 @@ class DatasetHelper:
         pandas dataframe
         '''
         # All the files with this ocurrency will be loaded, so, be careful with names
-        path_pattern = "*data_etiquetada2.csv"
+        path_pattern = "./data/tweets_csv/*data_etiquetada2.csv"
 
         # store all the csv readed
         csv_datasets = [
