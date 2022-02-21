@@ -14,25 +14,27 @@ def train_rbm_model():
     stored_vocab = {}
     stored_inv_vocab = {}
 
-    # If there is a stored vocabulary I will use it since it's more efficient
-    if os.path.exists('./data/recommender/vocabulary.json'):
-        print("Stored vocabulary found, using it.")
-        f = open('./data/recommender/vocabulary.json')
-        stored_vocab = json.load(f)
+    # # If there is a stored vocabulary I will use it since it's more efficient
+    # if os.path.exists('./data/recommender/vocabulary.json'):
+    #     print("Stored vocabulary found, using it.")
+    #     f = open('./data/recommender/vocabulary.json')
+    #     stored_vocab = json.load(f)
 
-        if os.path.exists('./data/recommender/inverse_vocabulary.json'):
-            f = open('./data/recommender/inverse_vocabulary.json')
-            stored_inv_vocab = json.load(f)
-        else:
-            print("Inverse vocabulary not found. Deleting loaded vocabulary...")
-            stored_vocab = None
+    #     if os.path.exists('./data/recommender/inverse_vocabulary.json'):
+    #         f = open('./data/recommender/inverse_vocabulary.json')
+    #         stored_inv_vocab = json.load(f)
+    #     else:
+    #         print("Inverse vocabulary not found. Deleting loaded vocabulary...")
+    #         stored_vocab = None
 
     vocabulary_helper = VocabularyHelper(stored_vocab, stored_inv_vocab)
 
     ### Vocabulary generetion
     print("Starting the training of RBM | processing vocab 5%")
     # If you are using a stored vocab then its indices are not gonna be lost
-    vocabulary_helper.build_vocab()
+    data = pd.read_csv('./data_etiquetada2.csv', encoding='utf-16', sep='|')
+    print(data.head(5))
+    vocabulary_helper.build_vocab(custom_data=data)
     vocabulary_helper.save_vocab()
     vocab, inv_vocab = vocabulary_helper.get_vocab()
 
@@ -40,13 +42,15 @@ def train_rbm_model():
     dataset_helper = DatasetHelper(vocab)
 
     # If [from_skratch] is False then I'll be using soted values
-    stored_data = torch.from_numpy(np.load('data/recommender/dimensional_data.npy')) \
-        if os.path.exists('./data/recommender/dimensional_data.npy') else None
+    stored_data = torch.FloatTensor(torch.load('data/recommender/dimensional_data.pt')) \
+        if os.path.exists('./data/recommender/dimensional_data.pt') else None
         
+
     torch_data = dataset_helper.build_dataset(
         from_skratch = True, # TODO: change it for production 
         save_data=True, 
-        stored_data=stored_data
+        stored_data=stored_data,
+        custom_dataset=data
     )
 
     nv = len(vocab) # visible nodes
@@ -69,7 +73,7 @@ def train_rbm_model():
     pd.to_pickle(rbm.w, "./data/recommender/weights.pkl")
 
     # fitting the machine
-    rbm.fit(100, torch_data)
+    rbm.fit(5, torch_data)
 
     # TODO: change it to be realtime
     # predicting list of words for 01.01.00

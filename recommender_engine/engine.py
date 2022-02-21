@@ -1,4 +1,5 @@
 import math
+import sys
 import numpy as np
 import pandas as pd
 import torch
@@ -136,6 +137,8 @@ class RBM():
             print(f"]", end="\r", flush=True)
         print("\nLoss (MAE): "+str(training_loss/s))
         print("Loss (MSE): "+str(mse_loss/s))
+        # cleaning up the buffer
+        sys.stdout.flush()
 
     self.vk = vk
     return vk

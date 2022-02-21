@@ -51,7 +51,7 @@ class VocabularyHelper:
 
         return self.__vocab, self.__inv_vocab
 
-    def build_vocab(self):
+    def build_vocab(self, custom_data=None):
         '''
         Will build a pair of vocab and inverse vocab in order to use them
         later in boltzmann engine
@@ -61,7 +61,7 @@ class VocabularyHelper:
             self.initial_vocab = set()
 
             # [text] is the tweet field, be aware of that
-            for tweet in self.dataset['text']:
+            for tweet in (custom_data['text'] if custom_data is not None else self.dataset['text']):
                 # extracting only words with a lenght higher or equals than 3
                 words = list(filter(lambda x: len(x) >= 3, tweet.split(' ')))
                 self.initial_vocab |= set(words)

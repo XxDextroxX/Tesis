@@ -35,7 +35,7 @@ class DatasetHelper:
             'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
         }
 
-    def build_dataset(self, from_skratch = False, save_data = False, stored_data = None) -> torch.FloatTensor:
+    def build_dataset(self, from_skratch = False, save_data = False, stored_data = None, custom_dataset = None) -> torch.FloatTensor:
         '''
         Builds the final dataset and if @write_date is True then it will write a file
         called 'flat_data.csv', another called 'vocabulary.json', and another one called 
@@ -44,7 +44,7 @@ class DatasetHelper:
         '''
         raw_dataframe = None
         try:
-            raw_dataframe = self.read_dataset(all_datasets=from_skratch)
+            raw_dataframe = custom_dataset if custom_dataset is not None else self.read_dataset(all_datasets=from_skratch)
         except:
             print("Today dataset not found. Change it to [from_skratch=True] or not new data will be loaded.")
 
@@ -57,8 +57,8 @@ class DatasetHelper:
         self.flat_data = self.__build_flat_dataset(self.multi_data)
 
         if save_data:
-            np.save('./data/recommender/dimensional_data.npy', self.multi_data.numpy())
-            np.savetxt('./data/recommender/flat_data.csv', self.flat_data.numpy())
+            torch.save(self.multi_data, './data/recommender/dimensional_data.pt')
+            torch.save(self.flat_data, './data/recommender/flat_data.pt')
         
         print(self.flat_data[self.flat_data > 0].size())
         return self.flat_data

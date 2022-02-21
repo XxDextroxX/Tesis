@@ -1,11 +1,11 @@
 tweets_streaming.json
 tweets_streaming_*.json
 **.csv
+**/**.npy
 
 extraction/__pycache__/
 
 **/__pycache__/
 .env
-data_etiquetada.csv
 **/**.pickle
 **/**.model
