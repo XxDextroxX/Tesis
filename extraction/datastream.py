@@ -65,7 +65,8 @@ class StreamListener(tweepy.Stream):
         # Since tweeter doesn't allow you to exceute too many conditions (every single
         # word is a condition) it's necessary to just pick up a little sample from the
         # whole population.
-        sample_words = random.sample(self.word_list, sample_size)
+        # TODO: fix it
+        sample_words = self.word_list # random.sample(self.word_list, sample_size)
 
         # feedback
         print("Listening tweets with the next matches\n", sample_words)
