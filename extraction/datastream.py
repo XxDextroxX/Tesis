@@ -1,3 +1,5 @@
+# TODO: Check all the TODOs in this file and complete them all
+
 import threading
 import tweepy
 import os
@@ -34,19 +36,19 @@ class StreamListener(tweepy.Stream):
         self.preprocessor = Preprocessing()
         self.lista_name_fields = ['user_id', 'status_id', 'created_at', 'screen_name',
                                   'text', 'status_url', 'lat', 'long', 'place_full_name']
-        self.path_csv = './data_streaming.csv'
-        self.should_create_file_csv = False
-        self.path_tsv = './data_streaming_preprocessing.csv'
-        self.should_create_file_tsv = False  # if the json file should be created or not
-        self.path = f'./tweets_streaming_{str(date.today())}.json'
+
+        # defining routes to save CSV and JSON files
+        self.define_routes()
+
+        self.should_create_file_csv = False # I just forget what this variable does :'(
+        self.should_create_file_tsv = False  # Well... I don't remember why this variavble is needed neither
         self.should_create_file = False  # if the json file should be created or not
-        self.consumer_key = os.getenv(
-            "TWITTER_CONSUMER_KEY")  # twitter app key
-        self.consumer_secret = os.getenv(
-            "TWITTER_CONSUMER_SECRET")  # twitter app secret
+
+        # API key credentials
+        self.consumer_key = os.getenv( "TWITTER_CONSUMER_KEY")  # twitter app key
+        self.consumer_secret = os.getenv( "TWITTER_CONSUMER_SECRET")  # twitter app secret
         self.access_token = os.getenv("TWITTER_ACCESS_TOKEN")  # twitter key
-        self.access_token_secret = os.getenv(
-            "TWITTER_ACCESS_TOKEN_SECRET")  # twitter secret
+        self.access_token_secret = os.getenv( "TWITTER_ACCESS_TOKEN_SECRET")  # twitter secret
 
         super().__init__(
             self.consumer_key, self.consumer_secret,
@@ -54,13 +56,35 @@ class StreamListener(tweepy.Stream):
         )
 # ----------------------------------------------------------------------------------------
 
+    def define_routes(self):
+        # Defining tree explorer architecture
+        current_date = date.today()
+        month = f'0{current_date.month}' if current_date.month < 10  else str(current_date.month)
+        self.target_path = f"./data/{current_date.year}/{month}/" # where to save data
+        
+        if not os.path.exists(self.target_path):
+            os.makedirs(self.target_path)
+
+        # TODO: rename variables to a more representative name
+        # ...
+        # This is the full JSON with all the keys provided by Twitter. This file increases
+        # its size very quick, so always check available RAM before opening this file without
+        # an efficient reader such as Pandas.
+        self.path = f'{self.target_path}tweets_streaming_{str(date.today())}.json'
+        self.path_csv = f'{self.target_path}data_streaming_{str(current_date)}.csv'
+        self.path_tsv = f'{self.target_path}data_streaming_preprocessing_{str(current_date)}.csv'
+
     # [period] needs to be in seconds
     def extract_tweets(self, sample_size=30, thread=None):
 
+        self.define_routes()
+
+        # Since this is an event loop, the main is not always called (only when there is no
+        # memory and the OS frees up memory), we need to define routes again
+
+        # TODO: document what this piece of code is doing
         if thread is not None:
             threading.Event().set()
-
-        self.path = f'./tweets_streaming_{str(date.today())}.json'
 
         # Since tweeter doesn't allow you to exceute too many conditions (every single
         # word is a condition) it's necessary to just pick up a little sample from the
@@ -87,16 +111,25 @@ class StreamListener(tweepy.Stream):
             threaded=True
         )
 # ----------------------------------------------------------------------------------------
-
     def on_status(self, status):
-        sys.stdout.flush()
+        '''
+        This is an automated process to extract tweets and handle errors like allowed API
+        call exceed exception
+        '''
         if self.id_tweet != status._json['id_str']:
+            sys.stdout.flush() # cleaning the buffer
             self.id_tweet = status._json['id_str']
+
+            # If tweet does not have a retweeted status then it is a new tweet
             if not hasattr(status, "retweeted_status"):
                 try:
-                    location = status.place.full_name if hasattr(
-                        status.place, 'full_name') else (status.user.location
-                                                         if hasattr(status.user, 'location') else "NA")
+                    location = status.place.full_name \
+                            if hasattr( status.place, 'full_name') \
+                            else (\
+                                status.user.location \
+                                if hasattr(status.user, 'location') \
+                                else "NA"\
+                            )
 
                     # not from Ecuador. If the location has a comma then it should
                     # always have the word "Ecuador"
@@ -115,8 +148,12 @@ class StreamListener(tweepy.Stream):
                         return
 
                     text = status._json["text"]
-                    matches = 0
+                    matches = 0 # number of matches to be considered as emergency 
+                                # tweet is defined in the .env file
 
+                    # TODO: analyze this problem and determine if it is a problem
+                    # on our side or if it is a problem with tweepy.
+                    # ...
                     # This is a second filter. For no reason Twitter is giving
                     # us tweets that don't match with keywords, so, just to be
                     # sure let's apply a second filter
@@ -124,7 +161,7 @@ class StreamListener(tweepy.Stream):
                         if re.search(f"{word}", text, re.I):
                             matches += 1
 
-                    # Every single tweet should have at least 3 matches
+                    # Every single tweet should have at least [NUMBERS_MATCH] matches
                     if matches < self.NUMBERS_MATCH:
                         return
 
@@ -133,18 +170,24 @@ class StreamListener(tweepy.Stream):
                     # CSV with relevant fields
                     self.save_csv(status, self.path_csv)
                     # CSV with text preprocessed
-                    fields = self.save_csv(
-                        status, self.path_tsv, shouldPreprocessing=True)
-                    self.save_labelled_csv(processed_fields=fields)
+                    fields = self.save_csv( status, self.path_tsv, shouldPreprocessing=True)
+                    self.save_labelled_csv(
+                        processed_fields=fields,
+                        path=f"{self.target_path}data_etiquetada_{str(date.today())}.csv",
+                        path2=f"{self.target_path}data_etiquetada2_{str(date.today())}.csv"
+                    )
                 except Exception as e:
                     print(e)
 
+        #TODO: for some reason we need to clean the buffer twice, the first one is at the beginning
+        # of this method. Analayze why this is happening.
+        sys.stdout.flush()
 
 # ----------------------------------------------------------------------------------------
-
-    # the [file] should be a reference
-
     def save_raw_data(self, json_data):
+        '''
+        Saves the full raw JSON coming data from Twitter
+        '''
         # If the file doesn't exist then I should write the
         # json structure.
         if not exists(self.path):
@@ -173,10 +216,9 @@ class StreamListener(tweepy.Stream):
         # Headers of the CSV. All labelled data should contain the class and the institution
         fields = self.lista_name_fields.copy() + ['class', 'institution']
 
-        text_index = 4  # Text position in the CSV
+        text_index = 4  # Text field's position in the CSV
         splitted_text = processed_fields.split('|')
-        label = self.knn_model.predict_label(
-            splitted_text[text_index].split(' '))
+        label = self.knn_model.predict_label( splitted_text[text_index].split(' '))
 
         should_create_file1 = False
         should_create_file2 = False
