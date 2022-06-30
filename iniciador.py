@@ -85,18 +85,29 @@ def EtiquetarModelLSI(tweet):
 
 
 def make_prediction(text):
-    classifier_bi = load('Tesis/Modelo/classifier_bi.joblib')
-    classifier_mul = load('Tesis/Modelo/classifier_mul.joblib')
-    real_vectorizer_bi = load('Tesis/Modelo/real_vectorizer_bi.joblib')
-    real_vectorizer_mul = load('Tesis/Modelo/real_vectorizer_mul.joblib')
-    vector_text_bi = real_vectorizer_bi.transform([text])
-    predict_bi = classifier_bi.predict(vector_text_bi)
-    if predict_bi[0] == 'emergencia':
-        vector_text_mul = real_vectorizer_mul.transform([text])
-        predict_mul = classifier_mul.predict(vector_text_mul)
-        return predict_bi[0], predict_mul[0]
-    else:
-        return predict_bi[0], "no_emergencia"
+    MatrizSimLSI = pickle.load(
+        open('Tesis/Modelo/cl_bi_prueba.pickle', 'rb'))
+    print(MatrizSimLSI)
+    # with open("Tesis/Modelo/vector_bi_prueba.pickle", "rb") as f:
+    #     vector_bi_prueba = pickle.load(f)
+
+    # with open("Tesis/Modelo/cl_bi_prueba.pickle", "rb") as f:
+    #     cl_bi_prueba = pickle.load(f)
+
+    # with open("Tesis/Modelo/vector_mul_prueba.pickle", "rb") as f:
+    #     vector_mul_prueba = pickle.load(f)
+
+    # with open("Tesis/Modelo/cl_mul_prueba.pickle", "rb") as f:
+    #     cl_mul_prueba = pickle.load(f)
+
+    # vector_text_bi = vector_bi_prueba.transform([text])
+    # predict_bi = cl_bi_prueba.predict(vector_text_bi)
+    # if predict_bi[0] == 'emergencia':
+    #     vector_text_mul = vector_mul_prueba.transform([text])
+    #     predict_mul = cl_mul_prueba.predict(vector_text_mul)
+    #     return predict_bi[0], predict_mul[0]
+    # else:
+    #     return predict_bi[0], "no_emergencia"
 
 
 make_prediction('Anoche tenia frio y hambre por que tu estabas bien fea')

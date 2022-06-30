@@ -231,11 +231,11 @@ class StreamListener(tweepy.Stream):
         splitted_text = processed_fields.split('|')
         label = self.knn_model.predict_label(
             splitted_text[text_index].split(' '))
-        print('before')
-        _a, _b = model.make_prediction(
-            splitted_text[text_index].split(' '))
-        print(f'My results: ${_a} || ${_b}')
-        print('after')
+        # print('before')
+        # _a, _b = model.make_prediction(
+        #     splitted_text[text_index].split(' '))
+        # print(f'My results: ${_a} || ${_b}')
+        # print('after')
         should_create_file1 = False
         should_create_file2 = False
 
