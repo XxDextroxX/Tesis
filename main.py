@@ -23,7 +23,7 @@ assert NUMBER_LISTS > 0  # you need at least one of these files
 # Loading all the words into an unique variable
 for i in range(NUMBER_LISTS):
     full_words += [str(x[0])
-                   for x in (pd.read_csv(f'./Listas/Lista{i + 1}.csv')).values]
+                   for x in (pd.read_csv(f'Tesis/Listas/Lista{i + 1}.csv')).values]
 # ----------------------------------------------------------------------------------------
 
 
@@ -36,6 +36,7 @@ stream_listener = StreamListener(full_words)
 # Necessary to stop the filter thread
 loop_thread = None
 
+
 def event():
     # This will handle all the errors coming from Tweeter such as
     # extraction limit reached or disconnections
@@ -43,7 +44,8 @@ def event():
     global loop_thread
 
     stream_listener.disconnect()
-    thread = stream_listener.extract_tweets(sample_size=SAMPLE_SIZE, thread = loop_thread)
+    thread = stream_listener.extract_tweets(
+        sample_size=SAMPLE_SIZE, thread=loop_thread)
     loop_thread = thread
 
 
