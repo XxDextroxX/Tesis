@@ -15,17 +15,19 @@ import iniciador as model
 from model.knn import KNNModel
 from os.path import exists
 from extraction.preproccesing import Preprocessing
+import string
 
 # ----------------------------------------------------------------------------------------
 
 # All the cities are in this csv
-cities = pd.read_csv('Tesis/Listas/ciudades.csv')
+cities = pd.read_csv('./Listas/ciudades.csv')
 
 geolocator = Nominatim(user_agent="geoapiExercises")
 
 
 class StreamListener(tweepy.Stream):
     def __init__(self, words):
+        self.punctuation = set(string.punctuation)
         self.id_tweet = ''
         self.NUMBERS_MATCH = int(os.getenv("NUMBER_WORD_MATCH"))
         self.cities = [str(x[0]) for x in cities.values]
@@ -220,6 +222,17 @@ class StreamListener(tweepy.Stream):
             f.close()  # closing the file
 # ----------------------------------------------------------------------------------------
 
+    # def tokenize(self, sentence):
+    #     tokens = []
+    #     for token in sentence.split():
+    #         new_token = []
+    #         for character in token:
+    #             if character not in self.punctuation:
+    #                 new_token.append(character.lower())
+    #         if new_token:
+    #             tokens.append("".join(new_token))
+    #     return tokens
+
     def save_labelled_csv(self, processed_fields, path2='data_etiquetada.csv', path="data_etiquetada2.csv"):
         """
         `processed_fields` should be a formatted string with "|" character as separator
@@ -231,11 +244,11 @@ class StreamListener(tweepy.Stream):
         splitted_text = processed_fields.split('|')
         label = self.knn_model.predict_label(
             splitted_text[text_index].split(' '))
-        # print('before')
-        # _a, _b = model.make_prediction(
-        #     splitted_text[text_index].split(' '))
-        # print(f'My results: ${_a} || ${_b}')
-        # print('after')
+        print('before')
+        _a, _b = model.make_prediction(
+            splitted_text[text_index].split(' '))
+        print(f'My results: ${_a} || ${_b}')
+        print('after')
         should_create_file1 = False
         should_create_file2 = False
 

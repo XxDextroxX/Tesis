@@ -23,7 +23,7 @@ assert NUMBER_LISTS > 0  # you need at least one of these files
 # Loading all the words into an unique variable
 for i in range(NUMBER_LISTS):
     full_words += [str(x[0])
-                   for x in (pd.read_csv(f'Tesis/Listas/Lista{i + 1}.csv')).values]
+                   for x in (pd.read_csv(f'./Listas/Lista{i + 1}.csv')).values]
 # ----------------------------------------------------------------------------------------
 
 

@@ -5,6 +5,7 @@ import pickle
 import collections
 # from joblib import dump
 from joblib import load
+import string
 
 rows = []
 
@@ -45,10 +46,10 @@ for i in range(1280):
 for j in range(1280):
     tipo.append(0)
 
-modelLSI = pickle.load(open('Tesis/Modelo/ModelLSI9.model', 'rb'))
-DiccioLSI = pickle.load(open('Tesis/Modelo/DiccionarioLSI9.pickle', 'rb'))
+modelLSI = pickle.load(open('./Modelo/ModelLSI9.model', 'rb'))
+DiccioLSI = pickle.load(open('./Modelo/DiccionarioLSI9.pickle', 'rb'))
 MatrizSimLSI = pickle.load(
-    open('Tesis/Modelo/MatrizSimilaridadLSI9.pickle', 'rb'))
+    open('./Modelo/MatrizSimilaridadLSI9.pickle', 'rb'))
 
 
 def modeloLSI(tweet):
@@ -78,36 +79,48 @@ def EtiquetarModelLSI(tweet):
     return k_5
 
 
-# classifier_bi = load('Tesis/Modelo/classifier_bi.joblib')
-# classifier_mul = load('Tesis/Modelo/classifier_mul.joblib')
-# real_vectorizer_bi = load('Tesis/Modelo/real_vectorizer_bi.joblib')
-# real_vectorizer_mul = load('Tesis/Modelo/real_vectorizer_mul.joblib')
+# classifier_bi = load('./Modelo/classifier_bi.joblib')
+# classifier_mul = load('./Modelo/classifier_mul.joblib')
+# real_vectorizer_bi = load('./Modelo/real_vectorizer_bi.joblib')
+# real_vectorizer_mul = load('./Modelo/real_vectorizer_mul.joblib')
+punctuation = set(string.punctuation)
 
 
-def make_prediction(text):
-    MatrizSimLSI = pickle.load(
-        open('Tesis/Modelo/cl_bi_prueba.pickle', 'rb'))
-    print(MatrizSimLSI)
-    # with open("Tesis/Modelo/vector_bi_prueba.pickle", "rb") as f:
-    #     vector_bi_prueba = pickle.load(f)
-
-    # with open("Tesis/Modelo/cl_bi_prueba.pickle", "rb") as f:
-    #     cl_bi_prueba = pickle.load(f)
-
-    # with open("Tesis/Modelo/vector_mul_prueba.pickle", "rb") as f:
-    #     vector_mul_prueba = pickle.load(f)
-
-    # with open("Tesis/Modelo/cl_mul_prueba.pickle", "rb") as f:
-    #     cl_mul_prueba = pickle.load(f)
-
-    # vector_text_bi = vector_bi_prueba.transform([text])
-    # predict_bi = cl_bi_prueba.predict(vector_text_bi)
-    # if predict_bi[0] == 'emergencia':
-    #     vector_text_mul = vector_mul_prueba.transform([text])
-    #     predict_mul = cl_mul_prueba.predict(vector_text_mul)
-    #     return predict_bi[0], predict_mul[0]
-    # else:
-    #     return predict_bi[0], "no_emergencia"
+def tokenize(sentence):
+    tokens = []
+    for token in sentence.split():
+        new_token = []
+        for character in token:
+            if character not in punctuation:
+                new_token.append(character.lower())
+        if new_token:
+            tokens.append("".join(new_token))
+    return tokens
 
 
-make_prediction('Anoche tenia frio y hambre por que tu estabas bien fea')
+with open("./Modelo/vector_bi_prueba.pickle", "rb") as f:
+    vector_bi_prueba = pickle.load(f)
+
+with open("./Modelo/cl_bi_prueba.pickle", "rb") as f:
+    cl_bi_prueba = pickle.load(f)
+
+with open("./Modelo/vector_mul_prueba.pickle", "rb") as f:
+    vector_mul_prueba = pickle.load(f)
+
+with open("./Modelo/cl_mul_prueba.pickle", "rb") as f:
+    cl_mul_prueba = pickle.load(f)
+
+
+def make_prediction(text, tokenize=tokenize):
+
+    vector_text_bi = vector_bi_prueba.transform([text])
+    predict_bi = cl_bi_prueba.predict(vector_text_bi)
+    if predict_bi[0] == 'emergencia':
+        vector_text_mul = vector_mul_prueba.transform([text])
+        predict_mul = cl_mul_prueba.predict(vector_text_mul)
+        return predict_bi[0], predict_mul[0]
+    else:
+        return predict_bi[0], "no_emergencia"
+
+
+print(make_prediction('Ayer fume arina de noche'))
