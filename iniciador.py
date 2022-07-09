@@ -79,48 +79,42 @@ def EtiquetarModelLSI(tweet):
     return k_5
 
 
-# classifier_bi = load('./Modelo/classifier_bi.joblib')
-# classifier_mul = load('./Modelo/classifier_mul.joblib')
-# real_vectorizer_bi = load('./Modelo/real_vectorizer_bi.joblib')
-# real_vectorizer_mul = load('./Modelo/real_vectorizer_mul.joblib')
-punctuation = set(string.punctuation)
+# def tokenize(sentence):
+#     punctuation = set(string.punctuation)
+#     tokens = []
+#     for token in sentence.split():
+#         new_token = []
+#         for character in token:
+#             if character not in punctuation:
+#                 new_token.append(character.lower())
+#         if new_token:
+#             tokens.append("".join(new_token))
+#     return tokens
 
 
-def tokenize(sentence):
-    tokens = []
-    for token in sentence.split():
-        new_token = []
-        for character in token:
-            if character not in punctuation:
-                new_token.append(character.lower())
-        if new_token:
-            tokens.append("".join(new_token))
-    return tokens
+# with open("./Modelo/vector_bi_prueba.pickle", "rb") as f:
+#     vector_bi_prueba = pickle.load(f)
+
+# with open("./Modelo/cl_bi_prueba.pickle", "rb") as f:
+#     cl_bi_prueba = pickle.load(f)
+
+# with open("./Modelo/vector_mul_prueba.pickle", "rb") as f:
+#     vector_mul_prueba = pickle.load(f)
+
+# with open("./Modelo/cl_mul_prueba.pickle", "rb") as f:
+#     cl_mul_prueba = pickle.load(f)
 
 
-with open("./Modelo/vector_bi_prueba.pickle", "rb") as f:
-    vector_bi_prueba = pickle.load(f)
+# def make_prediction(text, tokenize=tokenize):
 
-with open("./Modelo/cl_bi_prueba.pickle", "rb") as f:
-    cl_bi_prueba = pickle.load(f)
-
-with open("./Modelo/vector_mul_prueba.pickle", "rb") as f:
-    vector_mul_prueba = pickle.load(f)
-
-with open("./Modelo/cl_mul_prueba.pickle", "rb") as f:
-    cl_mul_prueba = pickle.load(f)
-
-
-def make_prediction(text, tokenize=tokenize):
-
-    vector_text_bi = vector_bi_prueba.transform([text])
-    predict_bi = cl_bi_prueba.predict(vector_text_bi)
-    if predict_bi[0] == 'emergencia':
-        vector_text_mul = vector_mul_prueba.transform([text])
-        predict_mul = cl_mul_prueba.predict(vector_text_mul)
-        return predict_bi[0], predict_mul[0]
-    else:
-        return predict_bi[0], "no_emergencia"
+#     vector_text_bi = vector_bi_prueba.transform([text])
+#     predict_bi = cl_bi_prueba.predict(vector_text_bi)
+#     if predict_bi[0] == 'emergencia':
+#         vector_text_mul = vector_mul_prueba.transform([text])
+#         predict_mul = cl_mul_prueba.predict(vector_text_mul)
+#         return predict_bi[0], predict_mul[0]
+#     else:
+#         return predict_bi[0], "no_emergencia"
 
 
-print(make_prediction('Ayer fume arina de noche'))
+# print(make_prediction('Terrible accidente de transito 2 muertos y 2 heridos'))

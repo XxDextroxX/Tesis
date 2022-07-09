@@ -5,6 +5,11 @@ from dotenv import load_dotenv
 from twisted.internet import task, reactor  # an event loop library
 from extraction.datastream import StreamListener  # handle twitter's connection
 import os
+
+from extraction.train import TrainModel
+
+# TrainModel()
+
 # ----------------------------------------------------------------------------------------
 
 

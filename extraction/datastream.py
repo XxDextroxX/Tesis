@@ -10,12 +10,13 @@ import pandas as pd
 import sys
 from datetime import date
 from geopy.geocoders import Nominatim
+from extraction.train import TrainModel
 # from model.knn import LinearSVC
 import iniciador as model
 from model.knn import KNNModel
 from os.path import exists
 from extraction.preproccesing import Preprocessing
-import string
+import pickle
 
 # ----------------------------------------------------------------------------------------
 
@@ -27,13 +28,17 @@ geolocator = Nominatim(user_agent="geoapiExercises")
 
 class StreamListener(tweepy.Stream):
     def __init__(self, words):
-        self.punctuation = set(string.punctuation)
+        self.path_real_vectorizer_bi = 'Modelo/real_vectorizer_bi.pickle'
+        self.path_classifier_bi = 'Modelo/classifier_bi.pickle'
+        self.path_real_vectorizer_mul = 'Modelo/real_vectorizer_mul.pickle'
+        self.path_classifier_mul = 'Modelo/classifier_mul.pickle'
+        self.train_model = TrainModel()
+        self.real_vectorizer_bi, self.classifier_bi, self.real_vectorizer_mul, self.classifier_mul = self.load_models()
         self.id_tweet = ''
         self.NUMBERS_MATCH = int(os.getenv("NUMBER_WORD_MATCH"))
         self.cities = [str(x[0]) for x in cities.values]
         self.category = [f'Categoria_{i+1}'for i in range(8)]
         self.knn_model = KNNModel()
-        # self.linearSVC = LinearSVC()
         self.encoding = 'utf-16'
         self.daemon = True
 
@@ -59,11 +64,31 @@ class StreamListener(tweepy.Stream):
         self.access_token_secret = os.getenv(
             "TWITTER_ACCESS_TOKEN_SECRET")  # twitter secret
 
+        # self.train_model = TrainModel()
+        # self.real_vectorizer_bi, self.classifier_bi, self.real_vectorizer_mul, self.classifier_mul = self.load_models()
+
         super().__init__(
             self.consumer_key, self.consumer_secret,
             self.access_token, self.access_token_secret
         )
 # ----------------------------------------------------------------------------------------
+
+    def load_models(self):
+        print('Loading models')
+        with open(self.path_real_vectorizer_bi, "rb") as f:
+            self.real_vectorizer_bi = pickle.load(f)
+            f.close()
+        with open(self.path_classifier_bi, "rb") as f:
+            self.classifier_bi = pickle.load(f)
+            f.close()
+        with open(self.path_real_vectorizer_mul, "rb") as f:
+            self.real_vectorizer_mul = pickle.load(f)
+            f.close()
+        with open(self.path_classifier_mul, "rb") as f:
+            self.classifier_mul = pickle.load(f)
+            f.close()
+        print('Process finish with exists')
+        return self.real_vectorizer_bi, self.classifier_bi, self.real_vectorizer_mul, self.classifier_mul
 
     def define_routes(self):
         # Defining tree explorer architecture
@@ -113,9 +138,9 @@ class StreamListener(tweepy.Stream):
 
         return self.filter(
             languages=["es"],  # you can search in more than one language
-            track=sample_words,
+            track=[sample_words],
             # [none, low, medium] if you increase it then less tweets will be extracted
-            filter_level="low",
+            filter_level="none",
             locations=[  # box constraints
                 -83.278924317, -6.0320552006, -74.5878673271, 2.6512810757,  # Ecuador, base
             ],
@@ -222,33 +247,21 @@ class StreamListener(tweepy.Stream):
             f.close()  # closing the file
 # ----------------------------------------------------------------------------------------
 
-    # def tokenize(self, sentence):
-    #     tokens = []
-    #     for token in sentence.split():
-    #         new_token = []
-    #         for character in token:
-    #             if character not in self.punctuation:
-    #                 new_token.append(character.lower())
-    #         if new_token:
-    #             tokens.append("".join(new_token))
-    #     return tokens
-
     def save_labelled_csv(self, processed_fields, path2='data_etiquetada.csv', path="data_etiquetada2.csv"):
         """
         `processed_fields` should be a formatted string with "|" character as separator
         """
         # Headers of the CSV. All labelled data should contain the class and the institution
-        fields = self.lista_name_fields.copy() + ['class', 'institution']
+        fields = self.lista_name_fields.copy() + ['class', 'category']
 
         text_index = 4  # Text field's position in the CSV
         splitted_text = processed_fields.split('|')
-        label = self.knn_model.predict_label(
-            splitted_text[text_index].split(' '))
-        print('before')
-        _a, _b = model.make_prediction(
-            splitted_text[text_index].split(' '))
-        print(f'My results: ${_a} || ${_b}')
-        print('after')
+        # label = self.knn_model.predict_label(
+        #     splitted_text[text_index].split(' '))
+
+        label, aux = self.train_model.make_prediction(
+            splitted_text[text_index], self.real_vectorizer_bi, self.classifier_bi, self.real_vectorizer_mul, self.classifier_mul)
+
         should_create_file1 = False
         should_create_file2 = False
 
@@ -261,7 +274,7 @@ class StreamListener(tweepy.Stream):
             f.flush()
             should_create_file1 = False
         # print(f'before: {splitted_text}')
-        splitted_text += [label, random.sample(self.category, 1)[0]]
+        splitted_text += [label, aux]
         # print(f'after: {splitted_text}')
         temp_df = pd.DataFrame(columns=fields)
         temp_df.loc[-1] = splitted_text
