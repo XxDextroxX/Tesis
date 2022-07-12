@@ -144,6 +144,7 @@ class StreamListener(tweepy.Stream):
             locations=[  # box constraints
                 -83.278924317, -6.0320552006, -74.5878673271, 2.6512810757,  # Ecuador, base
             ],
+            # [period] needs to be in seconds
             threaded=True
         )
 # ----------------------------------------------------------------------------------------
